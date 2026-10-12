@@ -25,6 +25,9 @@ jobs:
             - name: Install dependencies
               run: make composer c="install --no-interaction --no-progress"
 
+            - name: Build CSS (Tailwind)
+              run: make assets
+
             - name: Lint (PHP-CS-Fixer + PHPStan)
               run: make lint
 
