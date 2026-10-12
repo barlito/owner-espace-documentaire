@@ -24,6 +24,7 @@ Sans `make` :
 ```bash
 docker compose up -d --build --wait
 docker compose exec php composer install
+docker compose exec php bin/console tailwind:build
 docker compose exec php bin/console doctrine:database:create --if-not-exists
 docker compose exec php bin/console doctrine:migrations:migrate -n
 ```
@@ -40,6 +41,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make test` | Recrée la base de test et lance PHPUnit |
 | `make lint` | Vérifie le style (PHP-CS-Fixer) et lance l'analyse statique (PHPStan) |
 | `make fix` | Corrige automatiquement le style |
+| `make watch` | Recompile le CSS (Tailwind) à chaque modification |
 | `make console c="…"` | Lance une commande Symfony |
 | `make db.reset` | Supprime et recrée la base |
 
@@ -52,14 +54,30 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Serveur | **FrankenPHP** (Caddy) | Un seul conteneur sert PHP et les fichiers statiques. |
 | Base de données | **PostgreSQL 18** | Imposé par le sujet. |
 | Environnement | **Docker Compose** | Un `make install` suffit, sans dépendance à une infrastructure externe. |
+| Front | **AssetMapper + Stimulus + Turbo** | Imposés par le sujet (Turbo, Stimulus) ; AssetMapper est le défaut de Symfony et évite toute chaîne Node. C'est aussi la stack du site d'OWNER. |
+| CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
+| Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
+
+## Direction artistique
+
+L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.com/) : les couleurs, le rayon (`10px`) et les échelles de nuances sont relevés directement dans le CSS du site.
+
+- **Couleurs** : vert `#376B44` (actions principales), bleu nuit `#121b35` (titres), bleu `#203D60` / `#D8E5EF` (aplats). Les états (succès, attention, erreur, information) reprennent leurs teintes, avec des nuances foncées pour le texte des badges afin de garder un contraste lisible.
+- **Typographies** : le texte est en **Inter**, comme sur le site. Les titres du site utilisent **Tomato Grotesk**, une police commerciale dont la licence ne permet pas la redistribution dans un dépôt public : elle est remplacée par **Schibsted Grotesk** (SIL Open Font License), retenue après comparaison visuelle avec l'originale comme la plus proche en largeur et en rondeur.
+- **Polices auto-hébergées** (`assets/fonts/`) plutôt que chargées depuis Google Fonts : aucune donnée de navigation (adresse IP) n'est transmise à un tiers, ce qui compte pour un service manipulant des pièces fiscales et sociales.
+- Le logo et le favicon sont ceux d'OWNER.
+
+Les composants sont visibles sur `/_styleguide` (environnements `dev` et `test` uniquement).
 
 ## Structure
 
 ```
 .docker/        Dockerfile, Caddyfile et configuration PHP
+assets/         CSS (tokens Tailwind), JS (Stimulus), polices, icônes, images
 config/         Configuration Symfony
 src/            Code applicatif
+templates/      Templates Twig (components/ : composants d'interface)
 tests/          Tests PHPUnit
 compose.yaml    Stack locale (php + database)
 ```
