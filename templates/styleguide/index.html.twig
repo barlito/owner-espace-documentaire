@@ -1,0 +1,94 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Styleguide{% endblock %}
+
+{% block body %}
+    <div class="space-y-12">
+        <header>
+            <span class="inline-block rounded-full bg-primary-25 px-3 py-1 text-xs font-semibold text-primary-600">Design system</span>
+            <h1 class="mt-3 text-3xl sm:text-4xl">Vos pièces, <span class="text-primary-500">analysées et retrouvées</span></h1>
+            <p class="mt-2 max-w-2xl text-gray-500">Composants partagés par l'espace client et l'espace administrateur, construits sur la DA d'OWNER.</p>
+        </header>
+
+        <section class="space-y-4">
+            <h2 class="text-xl">Couleurs</h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {% for name, class in {
+                    'Primaire 500': 'bg-primary-500',
+                    'Primaire 25': 'bg-primary-25',
+                    'Navy 500': 'bg-navy-500',
+                    'Ocean 700': 'bg-ocean-700',
+                    'Ocean 100': 'bg-ocean-100',
+                    'Gris 25': 'bg-gray-25',
+                    'Succès 500': 'bg-success-500',
+                    'Erreur 500': 'bg-danger-500',
+                } %}
+                    <div class="overflow-hidden rounded-lg border border-gray-50 bg-white">
+                        <div class="h-14 {{ class }}"></div>
+                        <p class="px-3 py-2 text-xs font-medium">{{ name }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h2 class="text-xl">Boutons</h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <twig:Button icon="lucide:upload">Déposer des pièces</twig:Button>
+                <twig:Button variant="secondary">Découvrir</twig:Button>
+                <twig:Button variant="ghost" icon="lucide:download">Télécharger</twig:Button>
+                <twig:Button variant="danger" icon="lucide:rotate-ccw">Relancer l'analyse</twig:Button>
+                <twig:Button size="sm">Petit</twig:Button>
+                <twig:Button disabled>Désactivé</twig:Button>
+                <twig:Button href="#" variant="secondary" icon="lucide:arrow-right">Lien</twig:Button>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h2 class="text-xl">Badges</h2>
+            <div class="flex flex-wrap items-center gap-2">
+                <twig:Badge icon="lucide:inbox">Reçue</twig:Badge>
+                <twig:Badge variant="info" icon="lucide:loader-circle">Analyse en cours</twig:Badge>
+                <twig:Badge variant="success" icon="lucide:circle-check">Analysée</twig:Badge>
+                <twig:Badge variant="warning" icon="lucide:clock">Traitement long</twig:Badge>
+                <twig:Badge variant="danger" icon="lucide:circle-x">Échec</twig:Badge>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h2 class="text-xl">Alertes</h2>
+            <div class="grid gap-3 md:grid-cols-2">
+                <twig:Alert variant="info" title="Envoi en cours">3 fichiers sur 5 transmis.</twig:Alert>
+                <twig:Alert variant="success" title="Pièces reçues">Vos 5 documents ont bien été reçus. Leur analyse démarre.</twig:Alert>
+                <twig:Alert variant="warning" title="Envoi partiel">2 fichiers n'ont pas été reçus. Vous pouvez les renvoyer.</twig:Alert>
+                <twig:Alert variant="danger" title="Fichier refusé">« scan.heic » : ce format n'est pas pris en charge.</twig:Alert>
+            </div>
+        </section>
+
+        <section class="grid gap-6 md:grid-cols-2">
+            <div class="space-y-4">
+                <h2 class="text-xl">Carte</h2>
+                <twig:Card>
+                    <h3 class="text-lg">Bulletin de salaire — mars 2026</h3>
+                    <p class="mt-1 text-sm text-gray-500">Déposé le 12/10/2026 à 14:32 · PDF · 182 Ko</p>
+                    <div class="mt-4 flex items-center justify-between">
+                        <twig:Badge variant="success" icon="lucide:circle-check">Analysée</twig:Badge>
+                        <twig:Button variant="ghost" size="sm" icon="lucide:eye">Consulter</twig:Button>
+                    </div>
+                </twig:Card>
+            </div>
+            <div class="space-y-4">
+                <h2 class="text-xl">État vide</h2>
+                <twig:Card :padded="false">
+                    <twig:EmptyState
+                        icon="lucide:folder-open"
+                        title="Votre dossier est encore vide"
+                        description="Déposez vos premières pièces : bulletins, bilans, statuts… Elles seront analysées automatiquement."
+                    >
+                        <twig:Button icon="lucide:upload">Déposer des pièces</twig:Button>
+                    </twig:EmptyState>
+                </twig:Card>
+            </div>
+        </section>
+    </div>
+{% endblock %}
