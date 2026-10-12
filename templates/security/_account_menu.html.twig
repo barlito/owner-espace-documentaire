@@ -9,7 +9,8 @@
                 <p class="hidden text-xs text-gray-500 sm:block">{{ app.user.client.name }}</p>
             {% endif %}
         </div>
-        <form method="post" action="{{ path('app_logout') }}">
+        {# The logout route is registered by SecurityBundle; the CSRF token only travels in this POST body. #}
+        <form method="post" action="{{ logout_path() }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
             <twig:Button type="submit" variant="ghost" size="sm" icon="lucide:log-out">
                 <span class="sr-only sm:not-sr-only">Déconnexion</span>

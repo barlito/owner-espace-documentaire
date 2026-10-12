@@ -23,13 +23,4 @@ final class SecurityController extends AbstractController
             'error' => $authenticationUtils->getLastAuthenticationError(),
         ]);
     }
-
-    /**
-     * Intercepted by the firewall, this body is never executed.
-     */
-    #[Route('/deconnexion', name: 'app_logout', methods: ['POST'])]
-    public function logout(): never
-    {
-        throw new \LogicException('This route is handled by the logout key of the firewall.');
-    }
 }
