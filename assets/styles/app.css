@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/*
+ * Polices auto-hébergées (SIL Open Font License, voir assets/fonts/LICENSE-*).
+ * Schibsted Grotesk remplace Tomato Grotesk (police commerciale du site OWNER).
+ */
+@font-face {
+    font-family: "Inter Variable";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("../fonts/inter-latin-wght.woff2") format("woff2-variations");
+}
+
+@font-face {
+    font-family: "Schibsted Grotesk Variable";
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url("../fonts/schibsted-grotesk-latin-wght.woff2") format("woff2-variations");
+}
+
+/*
+ * Tokens de la DA OWNER, relevés sur ownertechnology.com (:root du thème).
+ * La palette Tailwind par défaut est désactivée : seules ces couleurs existent.
+ */
+@theme {
+    --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Schibsted Grotesk Variable", "Inter Variable", ui-sans-serif, sans-serif;
+
+    --color-*: initial;
+    --color-white: #ffffff;
+
+    --color-primary-10: #f5f9f6;
+    --color-primary-25: #e8f2ec;
+    --color-primary-50: #d1e5d9;
+    --color-primary-100: #a3cbb3;
+    --color-primary-200: #75b18d;
+    --color-primary-300: #539768;
+    --color-primary-400: #458156;
+    --color-primary-500: #376b44;
+    --color-primary-600: #2c5636;
+    --color-primary-700: #214029;
+    --color-primary-800: #162b1b;
+    --color-primary-900: #0b150e;
+
+    --color-navy-10: #f5f6f8;
+    --color-navy-25: #eceef2;
+    --color-navy-50: #d9dce4;
+    --color-navy-100: #b3b9c9;
+    --color-navy-200: #677393;
+    --color-navy-300: #1a2d5c;
+    --color-navy-400: #16244c;
+    --color-navy-500: #121b35;
+    --color-navy-600: #0e162a;
+    --color-navy-700: #0b1020;
+
+    --color-ocean-100: #d8e5ef;
+    --color-ocean-700: #203d60;
+
+    --color-gray-10: #fafafa;
+    --color-gray-25: #f6f6f7;
+    --color-gray-50: #eeeeee;
+    --color-gray-100: #dcdcdd;
+    --color-gray-200: #b9b9bb;
+    --color-gray-300: #969799;
+    --color-gray-400: #737477;
+    --color-gray-500: #505155;
+    --color-gray-600: #404144;
+    --color-gray-700: #303133;
+    --color-gray-800: #202022;
+    --color-gray-900: #101011;
+
+    --color-info-50: #d9e5ef;
+    --color-info-100: #b3cbdf;
+    --color-info-500: #053c63;
+    --color-info-700: #03243b;
+
+    --color-success-50: #edf7ee;
+    --color-success-100: #dbefdc;
+    --color-success-500: #4caf50;
+    --color-success-700: #2e6930;
+
+    --color-warning-50: #fff7e6;
+    --color-warning-100: #fff0cd;
+    --color-warning-500: #ffb307;
+    --color-warning-800: #664803;
+
+    --color-danger-50: #fceded;
+    --color-danger-100: #fadbdb;
+    --color-danger-500: #e44b4b;
+    --color-danger-600: #b63c3c;
+    --color-danger-700: #892d2d;
+
+    --radius-lg: 10px;
+    --radius-xl: 16px;
+
+    --shadow-card: 0 1px 2px rgb(18 27 53 / 0.04), 0 4px 16px rgb(18 27 53 / 0.06);
+}
+
+@layer base {
+    html {
+        @apply bg-gray-10 font-sans text-gray-700 antialiased;
+    }
+
+    h1, h2, h3, h4 {
+        @apply font-display font-semibold tracking-tight text-navy-500;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-primary-500;
+    }
+}
