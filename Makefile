@@ -48,10 +48,11 @@ assets: ## Compile le CSS (Tailwind)
 watch: ## Recompile le CSS à chaque modification
 	$(DC) exec php bin/console tailwind:build --watch
 
-test: ## Lance la suite PHPUnit (base de test recréée)
+test: ## Recrée la base de test, valide le schéma et lance PHPUnit
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists --env=test
 	$(EXEC) bin/console doctrine:database:create --env=test
 	$(EXEC) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
+	$(EXEC) bin/console doctrine:schema:validate --env=test
 	$(EXEC) bin/phpunit
 
 lint: cs phpstan ## Vérifie le code (style + analyse statique)
