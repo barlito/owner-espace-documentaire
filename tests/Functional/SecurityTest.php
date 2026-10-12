@@ -135,6 +135,17 @@ final class SecurityTest extends WebTestCase
         $this->assertResponseRedirects('http://localhost/connexion');
     }
 
+    public function testVisitingTheLogoutUrlNeverEndsTheSession(): void
+    {
+        $this->browser->loginUser($this->createClientUser());
+
+        $this->browser->request('GET', '/deconnexion');
+        $this->assertResponseStatusCodeSame(403);
+
+        $this->browser->request('GET', '/espace');
+        $this->assertResponseIsSuccessful();
+    }
+
     public function testLogoutWithoutCsrfTokenIsRejected(): void
     {
         $this->browser->loginUser($this->createClientUser());
