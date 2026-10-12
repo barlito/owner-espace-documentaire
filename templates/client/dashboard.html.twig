@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon dossier{% endblock %}
+
+{% block body %}
+    <div class="mb-8">
+        <h1 class="text-3xl">Mon dossier</h1>
+        <p class="mt-1 text-gray-500">{{ client.name }}</p>
+    </div>
+
+    <twig:Card>
+        <twig:EmptyState
+            icon="lucide:folder-open"
+            title="Votre dossier est encore vide"
+            description="Vous pourrez bientôt déposer vos documents comptables, juridiques et sociaux, puis suivre leur analyse ici."
+        />
+    </twig:Card>
+{% endblock %}

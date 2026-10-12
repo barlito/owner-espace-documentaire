@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Supervision{% endblock %}
+
+{% block body %}
+    <div class="mb-8">
+        <h1 class="text-3xl">Supervision</h1>
+        <p class="mt-1 text-gray-500">Les dossiers de vos clients.</p>
+    </div>
+
+    <twig:Card :padded="false">
+        {% if rows is empty %}
+            <twig:EmptyState icon="lucide:building-2" title="Aucun client pour le moment" />
+        {% else %}
+            <table class="w-full text-left text-sm">
+                <caption class="sr-only">Clients et nombre de documents</caption>
+                <thead class="hidden border-b border-gray-50 text-xs font-semibold tracking-wide text-gray-500 uppercase sm:table-header-group">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Client</th>
+                        <th scope="col" class="px-6 py-3 text-right">Documents</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for row in rows %}
+                        <tr class="flex items-center justify-between gap-4 px-5 py-4 sm:table-row sm:px-0 sm:py-0">
+                            <th scope="row" class="font-semibold text-navy-500 sm:px-6 sm:py-4">{{ row.client.name }}</th>
+                            <td class="text-right sm:px-6 sm:py-4">
+                                <twig:Badge variant="{{ row.documentCount > 0 ? 'info' : 'neutral' }}" icon="lucide:file-text">
+                                    {{ row.documentCount }} {{ row.documentCount > 1 ? 'documents' : 'document' }}
+                                </twig:Badge>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </twig:Card>
+{% endblock %}
