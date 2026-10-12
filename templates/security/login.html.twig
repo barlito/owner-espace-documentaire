@@ -28,12 +28,12 @@
                     <form method="post" action="{{ path('app_login') }}" class="mt-6 space-y-5">
                         <div>
                             <label for="username" class="mb-1.5 block text-sm font-medium text-navy-500">Adresse e-mail</label>
-                            <input type="email" id="username" name="_username" value="{{ last_username }}" autocomplete="username" autofocus required
+                            <input type="email" id="username" name="_username" value="{{ last_username }}" autocomplete="username" {{ last_username ? '' : 'autofocus' }} required
                                    class="block w-full rounded-lg border border-gray-100 bg-white px-3.5 py-2.5 text-base text-gray-900 placeholder:text-gray-300">
                         </div>
                         <div>
                             <label for="password" class="mb-1.5 block text-sm font-medium text-navy-500">Mot de passe</label>
-                            <input type="password" id="password" name="_password" autocomplete="current-password" required
+                            <input type="password" id="password" name="_password" autocomplete="current-password" {{ last_username ? 'autofocus' : '' }} required
                                    class="block w-full rounded-lg border border-gray-100 bg-white px-3.5 py-2.5 text-base text-gray-900">
                         </div>
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">

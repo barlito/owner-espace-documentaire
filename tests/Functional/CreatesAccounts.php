@@ -27,7 +27,7 @@ trait CreatesAccounts
 
     private function createAdmin(): User
     {
-        return $this->persistWithPassword(User::admin('admin@owner.test', 'Équipe OWNER'));
+        return $this->persistWithPassword(User::admin('admin@owner.test', 'Sophie Laurent'));
     }
 
     private function persistWithPassword(User $user): User

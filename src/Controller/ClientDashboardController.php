@@ -17,8 +17,8 @@ final class ClientDashboardController extends AbstractController
     #[Route('/espace', name: 'client_dashboard')]
     public function __invoke(#[CurrentUser] User $user): Response
     {
-        $client = $user->getClient();
-        \assert(null !== $client, 'A client account always belongs to a client.');
+        // Guaranteed by User::forClient(), but never render a client space without a client.
+        $client = $user->getClient() ?? throw $this->createAccessDeniedException('Client account without client.');
 
         return $this->render('client/dashboard.html.twig', ['client' => $client]);
     }

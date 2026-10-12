@@ -36,7 +36,7 @@ Chargés par `make install` (ou `make fixtures`, qui vide la base avant de les r
 
 | Rôle | Adresse e-mail | Accès |
 | --- | --- | --- |
-| Administrateur (« Équipe OWNER ») | `admin@owner.test` | `/admin` — supervision de tous les clients |
+| Administratrice (Sophie Laurent, équipe OWNER) | `admin@owner.test` | `/admin` — supervision de tous les clients |
 | Client — Boulangerie Martin | `paul@boulangerie-martin.test` | `/espace` — uniquement son propre dossier |
 | Client — Micro-crèche Les Petits Pas | `claire@lespetitspas.test` | `/espace` — uniquement son propre dossier |
 

@@ -27,7 +27,7 @@ final class AppFixtures extends Fixture
         $petitsPas = new Client('Micro-crèche Les Petits Pas');
 
         $users = [
-            User::admin('admin@owner.test', 'Équipe OWNER'),
+            User::admin('admin@owner.test', 'Sophie Laurent'),
             User::forClient($martin, 'paul@boulangerie-martin.test', 'Paul Martin'),
             User::forClient($petitsPas, 'claire@lespetitspas.test', 'Claire Dubois'),
         ];

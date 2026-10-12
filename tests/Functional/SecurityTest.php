@@ -117,6 +117,7 @@ final class SecurityTest extends WebTestCase
         $this->assertSelectorTextContains('tbody', 'Boulangerie Martin');
         $this->assertSelectorTextContains('tbody', 'Micro-crèche Les Petits Pas');
         $this->assertSelectorTextContains('tbody', '0 document');
+        $this->assertSelectorTextContains('header', 'Sophie Laurent');
         $this->assertSelectorTextContains('header', 'Équipe OWNER');
     }
 
