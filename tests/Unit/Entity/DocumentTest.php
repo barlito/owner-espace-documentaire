@@ -15,7 +15,7 @@ final class DocumentTest extends TestCase
     {
         $document = new Document(new Client('Client A'), 'scan.pdf', 'key', 'application/pdf', 1024, str_repeat('a', 64));
 
-        $this->assertSame(DocumentStatus::Received, $document->getStatus());
+        $this->assertSame(DocumentStatus::Pending, $document->getStatus());
         $this->assertNull($document->getType());
         $this->assertNull($document->getPeriodStart());
     }

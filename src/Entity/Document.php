@@ -62,7 +62,7 @@ class Document
     private ?\DateTimeImmutable $periodEnd;
 
     #[ORM\Column(length: 20, enumType: DocumentStatus::class)]
-    private DocumentStatus $status = DocumentStatus::Received;
+    private DocumentStatus $status = DocumentStatus::Pending;
 
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE)]
     private \DateTimeImmutable $uploadedAt;

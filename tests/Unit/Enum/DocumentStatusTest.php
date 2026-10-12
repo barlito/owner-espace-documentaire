@@ -23,7 +23,7 @@ final class DocumentStatusTest extends TestCase
 
     public function testLabelsAreUserFacingFrench(): void
     {
-        $this->assertSame('Reçue', DocumentStatus::Received->label());
+        $this->assertSame('En attente d\'analyse', DocumentStatus::Pending->label());
         $this->assertSame('Échec de l\'analyse', DocumentStatus::Failed->label());
     }
 }

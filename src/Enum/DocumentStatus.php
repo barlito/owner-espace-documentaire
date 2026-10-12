@@ -10,7 +10,7 @@ namespace App\Enum;
  */
 enum DocumentStatus: string
 {
-    case Received = 'received';
+    case Pending = 'pending';
     case Processing = 'processing';
     case Analyzed = 'analyzed';
     case Failed = 'failed';
@@ -18,7 +18,7 @@ enum DocumentStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Received => 'Reçue',
+            self::Pending => 'En attente d\'analyse',
             self::Processing => 'En cours d\'analyse',
             self::Analyzed => 'Analysée',
             self::Failed => 'Échec de l\'analyse',
@@ -31,7 +31,7 @@ enum DocumentStatus: string
     public function badgeVariant(): string
     {
         return match ($this) {
-            self::Received => 'neutral',
+            self::Pending => 'neutral',
             self::Processing => 'info',
             self::Analyzed => 'success',
             self::Failed => 'danger',
@@ -41,7 +41,7 @@ enum DocumentStatus: string
     public function icon(): string
     {
         return match ($this) {
-            self::Received => 'lucide:inbox',
+            self::Pending => 'lucide:clock',
             self::Processing => 'lucide:loader-circle',
             self::Analyzed => 'lucide:circle-check',
             self::Failed => 'lucide:circle-x',
