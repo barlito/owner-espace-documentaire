@@ -1,0 +1,5 @@
+{% set tag = href ? 'a' : 'button' %}
+<{{ tag }} {% if href %}href="{{ href }}"{% else %}type="{{ type }}"{% endif %} {{ attributes.defaults({class: this.classes}) }}>
+    {% if icon %}{{ ux_icon(icon, {class: 'size-4 shrink-0'}) }}{% endif %}
+    {% block content %}{% endblock %}
+</{{ tag }}>

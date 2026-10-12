@@ -1,0 +1,4 @@
+<span {{ attributes.defaults({class: this.classes}) }}>
+    {% if icon %}{{ ux_icon(icon, {class: 'size-3.5 shrink-0'}) }}{% endif %}
+    {% block content %}{% endblock %}
+</span>

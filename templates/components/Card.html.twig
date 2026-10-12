@@ -1,0 +1,4 @@
+{% props padded = true %}
+<div {{ attributes.defaults({class: 'rounded-xl border border-gray-50 bg-white shadow-card' ~ (padded ? ' p-5 sm:p-6' : '')}) }}>
+    {% block content %}{% endblock %}
+</div>

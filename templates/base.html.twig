@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Espace documentaire{% endblock %} · OWNER</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+    </head>
+    <body class="flex min-h-full flex-col">
+        <a href="#contenu" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-card">
+            Aller au contenu
+        </a>
+
+        <header class="border-b border-gray-50 bg-white">
+            <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+                <a href="/" class="flex items-center gap-3">
+                    <img src="{{ asset('images/owner-logo.png') }}" alt="OWNER" width="120" height="18" class="h-[18px] w-auto">
+                    <span class="hidden border-l border-gray-100 pl-3 text-sm font-medium text-gray-500 sm:inline">Espace documentaire</span>
+                </a>
+                {% block header_actions %}{% endblock %}
+            </div>
+        </header>
+
+        <main id="contenu" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <twig:Alert variant="{{ type }}" class="mb-6">{{ message }}</twig:Alert>
+                {% endfor %}
+            {% endfor %}
+
+            {% block body %}{% endblock %}
+        </main>
+    </body>
+</html>

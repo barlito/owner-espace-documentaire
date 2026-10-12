@@ -1,0 +1,7 @@
+<div role="{{ this.role }}" {{ attributes.defaults({class: this.classes}) }}>
+    {{ ux_icon(this.icon, {class: 'mt-0.5 size-5 shrink-0'}) }}
+    <div class="space-y-1">
+        {% if title %}<p class="font-semibold">{{ title }}</p>{% endif %}
+        <div>{% block content %}{% endblock %}</div>
+    </div>
+</div>
