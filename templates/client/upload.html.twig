@@ -64,7 +64,7 @@
                     </div>
 
                     <p class="mt-4 text-sm text-gray-500">
-                        {{ policy.formatLabels|join(', ') }} · {{ constant('App\\Upload\\UploadPolicy::MAX_FILE_SIZE_MB') }} Mo maximum par fichier
+                        {{ policy.formatLabels|join(', ') }} · {{ constant('App\\Upload\\UploadPolicy::MAX_FILE_SIZE_MB') }} Mo maximum par fichier · {{ constant('App\\Upload\\UploadPolicy::MAX_FILES_PER_BATCH') }} fichiers maximum par envoi
                     </p>
                 </div>
 
@@ -129,7 +129,7 @@
                         </div>
                         <div class="order-last w-full sm:order-none sm:w-64" data-type-field>
                             <label class="sr-only" data-type-label>Nature de la pièce</label>
-                            <select class="w-full rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm" data-type-select>
+                            <select class="w-full rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:border-gray-50 disabled:bg-gray-25 disabled:text-gray-500" data-type-select>
                                 {% include 'client/_type_options.html.twig' with {groups: typeGroups} only %}
                             </select>
                         </div>
