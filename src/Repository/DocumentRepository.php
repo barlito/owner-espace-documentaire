@@ -27,4 +27,21 @@ class DocumentRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['id' => $id, 'client' => $client]);
     }
+
+    /**
+     * Most recent documents of a client. Status and type are plain columns: no association is loaded.
+     *
+     * @return list<Document>
+     */
+    public function findLatestForClient(Client $client, int $limit): array
+    {
+        return array_values($this->createQueryBuilder('d')
+            ->andWhere('d.client = :client')
+            ->setParameter('client', $client)
+            ->orderBy('d.uploadedAt', 'DESC')
+            ->addOrderBy('d.id', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult());
+    }
 }
