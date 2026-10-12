@@ -64,13 +64,28 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 ```
 Client 1──n User              (compte client ; un administrateur n'a pas de client)
 Client 1──n Document          (un fichier accepté = un document)
+Document 1──n AnalysisAttempt (une tentative par analyse ou relance)
+Document 1──n DocumentEvent   (timeline, en ajout seulement)
 ```
 
 | Entité | Rôle |
 | --- | --- |
 | `Client` | L'entreprise accompagnée. Son **dossier documentaire** est l'ensemble de ses documents : il n'y a pas d'entité « Dossier » distincte. |
 | `User` | Compte de connexion (`ROLE_CLIENT` rattaché à un client, ou `ROLE_ADMIN` sans client). |
-| `Document` | Pièce transmise : fichier original, nature et période (facultatives), statut d'analyse. |
+| `Document` | Pièce transmise : fichier original, nature et période (facultatives), statut d'analyse, tentative courante. |
+| `AnalysisAttempt` | Une exécution de l'analyse : numéro, statut, dates, résultat **ou** cause d'échec, administrateur à l'origine d'une relance. |
+| `DocumentEvent` | Événement daté de la timeline : type, auteur éventuel, tentative concernée, client. |
+
+**Cycle de vie d'un document**
+
+```
+En attente d'analyse ──▶ En cours d'analyse ──▶ Analysée
+        ▲                        │
+        │ relance (admin)        ▼
+        └──────────────── Échec de l'analyse
+```
+
+Chaque changement passe par une méthode de `Document` (`startAnalysis`, `completeAnalysis`, `failAnalysis`, `retryAnalysis`) qui met à jour la tentative courante **et** ajoute l'événement correspondant : le statut, les tentatives et l'historique ne peuvent pas diverger. Une transition invalide lève `InvalidDocumentTransition`.
 
 **Choix et hypothèses**
 
@@ -81,7 +96,10 @@ Client 1──n Document          (un fichier accepté = un document)
 - **Nom de stockage unique** (`storageKey`), indépendant du nom transmis : deux fichiers de même nom ne s'écrasent pas.
 - **Nature et période facultatives** : une pièce « non catégorisée » ou de période inconnue est acceptée. La nature suit la liste documentaire OWNER, regroupée en 16 types et 5 familles, dont « Autre ».
 - **Identifiants UUID v7** : non devinables dans les URL et ordonnés dans le temps (index efficaces).
-- **Garanties en base** : contraintes `CHECK` (cohérence de la période, valeurs de statut) et index partiel sur les documents en échec. Elles sont écrites dans les migrations ; la base de test est donc construite par les migrations, jamais par `schema:create`.
+- **Une relance crée une nouvelle tentative** sur le même document, sans jamais réécrire la précédente : un échec et sa cause restent visibles après une réussite.
+- **Le résultat est stocké sur la tentative** qui l'a produit : il ne peut pas être rattaché à la mauvaise tentative, au mauvais document ou au mauvais client.
+- **La timeline stocke des codes, pas des phrases** (`analysis_failed` + `{reason: unreadable_file}`) : le texte est rédigé à l'affichage, adapté au client ou à l'équipe OWNER. Les événements sont en lecture seule pour Doctrine.
+- **Garanties en base** : contraintes `CHECK` (cohérence de la période, valeurs de statut, **une tentative échouée ne porte jamais de résultat** et une tentative réussie en porte toujours un), index unique partiel interdisant **plus d'une tentative non terminée par document** (une relance répétée ne peut pas lancer deux traitements), unicité du numéro de tentative, index partiel sur les documents en échec. Elles sont écrites dans les migrations ; la base de test est donc construite par les migrations, jamais par `schema:create`.
 - **Pas de suppression de document dans le MVP** : l'historique doit rester fiable et conservé. Une suppression passerait d'abord par une suppression logique (soft delete), avant toute suppression définitive.
 - Le code est en anglais ; l'interface et les messages sont en français.
 

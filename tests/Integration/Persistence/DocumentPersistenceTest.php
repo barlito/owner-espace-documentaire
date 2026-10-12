@@ -9,7 +9,8 @@ use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentType;
 use App\Repository\DocumentRepository;
-use Doctrine\DBAL\Exception\DriverException;
+use App\Tests\Integration\DatabaseConstraintAssertions;
+use App\Tests\Integration\SqlState;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -20,7 +21,14 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class DocumentPersistenceTest extends KernelTestCase
 {
+    use DatabaseConstraintAssertions;
+
     private EntityManagerInterface $em;
+
+    /**
+     * @var array<int, User>
+     */
+    private array $uploaders = [];
 
     protected function setUp(): void
     {
@@ -30,9 +38,9 @@ final class DocumentPersistenceTest extends KernelTestCase
     public function testTwoFilesWithTheSameNameAreDistinctDocuments(): void
     {
         $client = new Client('Client A');
+        $this->em->persist($client);
         $first = $this->document($client, 'bulletin.pdf', 'key-1', DocumentType::Payslip, '2026-01-01', '2026-01-31');
         $second = $this->document($client, 'bulletin.pdf', 'key-2', DocumentType::Payslip, '2026-02-01', '2026-02-28');
-        $this->em->persist($client);
         $this->em->persist($first);
         $this->em->persist($second);
         $this->em->flush();
@@ -70,7 +78,7 @@ final class DocumentPersistenceTest extends KernelTestCase
     {
         $document = $this->persistedDocument();
 
-        $this->assertCheckViolation('chk_document_period', static fn (EntityManagerInterface $em) => $em->getConnection()->executeStatement(
+        $this->assertConstraintViolation(SqlState::CHECK_VIOLATION, 'chk_document_period', fn () => $this->em->getConnection()->executeStatement(
             "UPDATE document SET period_start = '2026-03-31', period_end = '2026-03-01' WHERE id = ?",
             [$document->getId()->toRfc4122()],
         ));
@@ -80,24 +88,10 @@ final class DocumentPersistenceTest extends KernelTestCase
     {
         $document = $this->persistedDocument();
 
-        $this->assertCheckViolation('chk_document_status', static fn (EntityManagerInterface $em) => $em->getConnection()->executeStatement(
+        $this->assertConstraintViolation(SqlState::CHECK_VIOLATION, 'chk_document_status', fn () => $this->em->getConnection()->executeStatement(
             "UPDATE document SET status = 'lost' WHERE id = ?",
             [$document->getId()->toRfc4122()],
         ));
-    }
-
-    /**
-     * @param callable(EntityManagerInterface): mixed $statement
-     */
-    private function assertCheckViolation(string $constraint, callable $statement): void
-    {
-        try {
-            $statement($this->em);
-            $this->fail(\sprintf('Constraint "%s" should have been violated.', $constraint));
-        } catch (DriverException $exception) {
-            $this->assertSame('23514', $exception->getSQLState());
-            $this->assertStringContainsString($constraint, $exception->getMessage());
-        }
     }
 
     private function persistedDocument(): Document
@@ -119,8 +113,12 @@ final class DocumentPersistenceTest extends KernelTestCase
         ?string $periodStart = null,
         ?string $periodEnd = null,
     ): Document {
+        $uploader = $this->uploaders[spl_object_id($client)] ??= User::forClient($client, uniqid() . '@client.test', 'Uploader');
+        $this->em->persist($uploader);
+
         return new Document(
             $client,
+            $uploader,
             $filename,
             $storageKey,
             'application/pdf',
