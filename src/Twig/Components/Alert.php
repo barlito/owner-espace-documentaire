@@ -19,7 +19,7 @@ final class Alert
             'success' => 'border-success-100 bg-success-50 text-success-700',
             'warning' => 'border-warning-100 bg-warning-50 text-warning-800',
             'danger' => 'border-danger-100 bg-danger-50 text-danger-700',
-            default => throw new \InvalidArgumentException(\sprintf('Variante d\'alerte inconnue : "%s".', $this->variant)),
+            default => throw new \InvalidArgumentException(\sprintf('Unknown alert variant "%s".', $this->variant)),
         };
 
         return 'flex gap-3 rounded-lg border p-4 text-sm ' . $variant;
@@ -36,7 +36,7 @@ final class Alert
     }
 
     /**
-     * Une erreur interrompt la lecture (role="alert"), le reste est annoncé poliment.
+     * Errors interrupt screen readers (role="alert"), other messages are announced politely.
      */
     public function getRole(): string
     {

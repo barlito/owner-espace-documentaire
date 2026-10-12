@@ -20,7 +20,7 @@ final class Badge
             'success' => 'bg-success-50 text-success-700',
             'warning' => 'bg-warning-100 text-warning-800',
             'danger' => 'bg-danger-50 text-danger-700',
-            default => throw new \InvalidArgumentException(\sprintf('Variante de badge inconnue : "%s".', $this->variant)),
+            default => throw new \InvalidArgumentException(\sprintf('Unknown badge variant "%s".', $this->variant)),
         };
 
         return 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ' . $variant;

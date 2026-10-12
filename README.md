@@ -38,7 +38,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make help` | Liste toutes les commandes |
 | `make up` / `make down` | Démarre / arrête la stack |
 | `make sh` | Shell dans le conteneur PHP |
-| `make test` | Recrée la base de test et lance PHPUnit |
+| `make test` | Recrée la base de test, valide le schéma Doctrine et lance PHPUnit |
 | `make lint` | Vérifie le style (PHP-CS-Fixer) et lance l'analyse statique (PHPStan) |
 | `make fix` | Corrige automatiquement le style |
 | `make watch` | Recompile le CSS (Tailwind) à chaque modification |
@@ -58,6 +58,32 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
+
+## Modèle de données
+
+```
+Client 1──n User              (compte client ; un administrateur n'a pas de client)
+Client 1──n Document          (un fichier accepté = un document)
+```
+
+| Entité | Rôle |
+| --- | --- |
+| `Client` | L'entreprise accompagnée. Son **dossier documentaire** est l'ensemble de ses documents : il n'y a pas d'entité « Dossier » distincte. |
+| `User` | Compte de connexion (`ROLE_CLIENT` rattaché à un client, ou `ROLE_ADMIN` sans client). |
+| `Document` | Pièce transmise : fichier original, nature et période (facultatives), statut d'analyse. |
+
+**Choix et hypothèses**
+
+- **Les documents appartiennent au client, pas au compte.** Pour ce MVP, un compte = un client, mais rattacher les pièces à l'entreprise évite de se fermer la porte à plusieurs personnes (dirigeant, comptable, assistante) travaillant sur le même dossier. Faire évoluer la propriété des documents après coup imposerait une migration de toutes les données.
+- **Pas d'entité « Envoi ».** Un envoi est un geste d'interface : chaque fichier accepté devient immédiatement un document, et un fichier refusé n'a, par définition, jamais été reçu.
+- **Le client est porté directement par le document**, même s'il pourrait être déduit : l'isolation entre clients se résume à un filtre `client_id`, sans jointure à ne pas oublier.
+- **Le statut est dénormalisé sur le document** pour lister et filtrer rapidement des dossiers volumineux.
+- **Nom de stockage unique** (`storageKey`), indépendant du nom transmis : deux fichiers de même nom ne s'écrasent pas.
+- **Nature et période facultatives** : une pièce « non catégorisée » ou de période inconnue est acceptée. La nature suit la liste documentaire OWNER, regroupée en 16 types et 5 familles, dont « Autre ».
+- **Identifiants UUID v7** : non devinables dans les URL et ordonnés dans le temps (index efficaces).
+- **Garanties en base** : contraintes `CHECK` (cohérence de la période, valeurs de statut) et index partiel sur les documents en échec. Elles sont écrites dans les migrations ; la base de test est donc construite par les migrations, jamais par `schema:create`.
+- **Pas de suppression de document dans le MVP** : l'historique doit rester fiable et conservé. Une suppression passerait d'abord par une suppression logique (soft delete), avant toute suppression définitive.
+- Le code est en anglais ; l'interface et les messages sont en français.
 
 ## Direction artistique
 

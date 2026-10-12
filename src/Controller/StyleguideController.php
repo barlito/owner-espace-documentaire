@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Vitrine des composants d'interface, accessible uniquement hors production.
+ * UI components showcase, only available outside production.
  */
 final class StyleguideController extends AbstractController
 {

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Polices auto-hébergées (SIL Open Font License, voir assets/fonts/LICENSE-*).
- * Schibsted Grotesk remplace Tomato Grotesk (police commerciale du site OWNER).
+ * Self-hosted fonts (SIL Open Font License, see assets/fonts/LICENSE-*).
+ * Schibsted Grotesk replaces Tomato Grotesk (commercial font used on the OWNER website).
  */
 @font-face {
     font-family: "Inter Variable";
@@ -21,8 +21,8 @@
 }
 
 /*
- * Tokens de la DA OWNER, relevés sur ownertechnology.com (:root du thème).
- * La palette Tailwind par défaut est désactivée : seules ces couleurs existent.
+ * OWNER design tokens, taken from ownertechnology.com (theme :root).
+ * The default Tailwind palette is disabled: only these colors exist.
  */
 @theme {
     --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
