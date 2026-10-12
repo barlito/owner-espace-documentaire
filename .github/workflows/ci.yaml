@@ -1,0 +1,36 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    ci:
+        name: Lint & tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Align container user with runner UID/GID
+              run: echo "USER_ID=$(id -u)" >> "$GITHUB_ENV" && echo "GROUP_ID=$(id -g)" >> "$GITHUB_ENV"
+
+            - name: Build and start the stack
+              run: make build up
+
+            - name: Install dependencies
+              run: make composer c="install --no-interaction --no-progress"
+
+            - name: Lint (PHP-CS-Fixer + PHPStan)
+              run: make lint
+
+            - name: Tests (PHPUnit)
+              run: make test
+
+            - name: Stack logs
+              if: failure()
+              run: docker compose logs

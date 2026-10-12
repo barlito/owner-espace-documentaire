@@ -1,0 +1,11 @@
+parameters:
+    level: 8
+    treatPhpDocTypesAsCertain: false
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - src/Kernel.php
+    tmpDir: var/cache/phpstan
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml

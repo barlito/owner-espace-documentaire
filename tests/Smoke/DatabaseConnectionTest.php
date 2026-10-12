@@ -13,7 +13,7 @@ final class DatabaseConnectionTest extends KernelTestCase
     {
         $connection = self::getContainer()->get(Connection::class);
 
-        self::assertSame(1, (int) $connection->fetchOne('SELECT 1'));
-        self::assertStringStartsWith('18', (string) $connection->fetchOne('SHOW server_version'));
+        $this->assertSame(1, (int) $connection->fetchOne('SELECT 1'));
+        $this->assertStringStartsWith('18', (string) $connection->fetchOne('SHOW server_version'));
     }
 }
