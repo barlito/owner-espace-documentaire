@@ -27,7 +27,20 @@ docker compose exec php composer install
 docker compose exec php bin/console tailwind:build
 docker compose exec php bin/console doctrine:database:create --if-not-exists
 docker compose exec php bin/console doctrine:migrations:migrate -n
+docker compose exec php bin/console doctrine:fixtures:load -n
 ```
+
+### Comptes de démonstration
+
+Chargés par `make install` (ou `make fixtures`, qui vide la base avant de les recréer). Mot de passe commun : `demo1234`.
+
+| Rôle | Adresse e-mail | Accès |
+| --- | --- | --- |
+| Administrateur (« Équipe OWNER ») | `admin@owner.test` | `/admin` — supervision de tous les clients |
+| Client — Boulangerie Martin | `paul@boulangerie-martin.test` | `/espace` — uniquement son propre dossier |
+| Client — Micro-crèche Les Petits Pas | `claire@lespetitspas.test` | `/espace` — uniquement son propre dossier |
+
+En environnement `dev`, ces comptes sont rappelés sous le formulaire de connexion (`/connexion`). Cet encart n'est jamais affiché en production.
 
 Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est pas `1000`, exportez `USER_ID=$(id -u) GROUP_ID=$(id -g)` avant le build.
 
@@ -44,6 +57,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make watch` | Recompile le CSS (Tailwind) à chaque modification |
 | `make console c="…"` | Lance une commande Symfony |
 | `make db.reset` | Supprime et recrée la base |
+| `make fixtures` | Recharge les comptes de démonstration (vide la base) |
 
 ## Stack technique
 
