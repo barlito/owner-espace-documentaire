@@ -1,0 +1,47 @@
+name: owner-docs
+
+services:
+    php:
+        build:
+            context: .
+            dockerfile: .docker/Dockerfile
+            target: frankenphp_dev
+            args:
+                USER_ID: ${USER_ID:-1000}
+                GROUP_ID: ${GROUP_ID:-1000}
+        environment:
+            SERVER_NAME: ":80"
+            TZ: Europe/Paris
+        ports:
+            - "${HTTP_PORT:-8000}:80"
+        volumes:
+            - ./:/app
+            - ./.docker/franken/Caddyfile:/etc/caddy/Caddyfile:ro
+            - composer_cache:/home/www/.composer
+            - caddy_data:/data
+            - caddy_config:/config
+        depends_on:
+            database:
+                condition: service_healthy
+
+    database:
+        image: postgres:18-alpine
+        environment:
+            POSTGRES_DB: app
+            POSTGRES_USER: app
+            POSTGRES_PASSWORD: app
+            TZ: Europe/Paris
+            PGTZ: Europe/Paris
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U app -d app"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        volumes:
+            - db_data:/var/lib/postgresql
+
+volumes:
+    composer_cache:
+    caddy_data:
+    caddy_config:
+    db_data:
