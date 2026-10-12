@@ -16,6 +16,8 @@ final class SecurityTest extends WebTestCase
     protected function setUp(): void
     {
         $this->browser = static::createClient();
+        // Login throttling counters are persisted in this pool: start every test with a clean slate.
+        static::getContainer()->get('cache.rate_limiter')->clear();
     }
 
     /**
@@ -133,6 +135,40 @@ final class SecurityTest extends WebTestCase
 
         $this->browser->request('GET', '/espace');
         $this->assertResponseRedirects('http://localhost/connexion');
+    }
+
+    public function testFiveFailuresOnAnyAccountsThrottleTheIp(): void
+    {
+        $this->createClientUser();
+        // Keep the same kernel (and its in-memory limiter storage) across requests.
+        $this->browser->disableReboot();
+
+        foreach (['a@x.test', 'b@x.test', 'c@x.test', 'd@x.test', 'e@x.test'] as $email) {
+            $this->submitLoginForm($email, 'wrong-password');
+            $this->browser->followRedirect();
+            $this->assertSelectorTextContains('[role="alert"]', 'Identifiants invalides.');
+        }
+
+        // Even valid credentials of an account never tried before are now refused from this IP.
+        $this->submitLoginForm('paul@boulangerie-martin.test', self::PASSWORD);
+        $this->browser->followRedirect();
+
+        $this->assertRouteSame('app_login');
+        $this->assertSelectorTextContains('[role="alert"]', 'Trop de tentatives de connexion échouées, veuillez réessayer dans 5 minutes.');
+    }
+
+    public function testSwitchingBetweenAccountsNeverThrottles(): void
+    {
+        $this->createClientUser();
+        $this->browser->disableReboot();
+
+        for ($i = 0; $i < 6; ++$i) {
+            $this->submitLoginForm('paul@boulangerie-martin.test', self::PASSWORD);
+            $this->assertResponseRedirects();
+            $this->browser->request('GET', '/espace');
+            $this->assertResponseIsSuccessful();
+            $this->browser->getCookieJar()->clear();
+        }
     }
 
     public function testVisitingTheLogoutUrlNeverEndsTheSession(): void

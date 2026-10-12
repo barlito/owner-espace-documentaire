@@ -21,3 +21,11 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Login throttling keyed on the IP alone (any account), see config/packages/rate_limiter.yaml.
+    app.login_rate_limiter:
+        class: Symfony\Component\Security\Http\RateLimiter\DefaultLoginRateLimiter
+        arguments:
+            $globalFactory: '@limiter.login_ip'
+            $localFactory: '@limiter.login_ip_username'
+            $secret: '%kernel.secret%'

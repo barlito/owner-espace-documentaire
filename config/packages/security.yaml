@@ -22,7 +22,8 @@ security:
                 check_path: app_login
                 enable_csrf: true
                 default_target_path: /
-            login_throttling: ~
+            login_throttling:
+                limiter: app.login_rate_limiter
             # SecurityBundle registers the /deconnexion route itself. Without a valid CSRF token
             # (only sent by the POST form in the header) the session is never closed.
             logout:

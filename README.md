@@ -128,7 +128,13 @@ L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.
 
 Les composants sont visibles sur `/_styleguide` (environnements `dev` et `test` uniquement).
 
-### Pages d'erreur
+## Sécurité de la connexion
+
+- **Limitation des échecs par IP, tous comptes confondus** : 5 échecs en 5 minutes depuis une même adresse IP bloquent les nouvelles tentatives de cette IP jusqu'à la fin de la fenêtre (`config/packages/rate_limiter.yaml`). Seuls les échecs comptent : passer d'un compte à l'autre ne bloque jamais personne, et le compte visé n'est jamais verrouillé (sinon n'importe qui pourrait bloquer le compte d'un client en ratant volontairement sa connexion).
+- Limite assumée : une attaque distribuée sur de nombreuses IP n'est pas couverte ; la réponse adaptée (double authentification, CAPTCHA, alertes) dépasse le MVP. Plusieurs personnes derrière une même IP (bureau) partagent le compteur.
+- Formulaires de connexion et de déconnexion protégés par CSRF ; la déconnexion n'est possible qu'en POST.
+
+## Pages d'erreur
 
 Une seule page (`templates/bundles/TwigBundle/Exception/error.html.twig`) adapte titre, message et icône au code : 400, 403, 404, 405, 413, 429, 5xx, et un message générique pour les autres. Elle ne dépend ni de l'utilisateur connecté (un 404 du routeur survient avant le chargement de la sécurité) ni de la base (une erreur 5xx peut venir d'elle). Le 404 reste volontairement vague (« n'existe pas, ou n'est pas accessible depuis votre compte ») pour ne jamais révéler l'existence d'une pièce d'un autre client.
 
