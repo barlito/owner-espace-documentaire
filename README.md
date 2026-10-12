@@ -38,6 +38,8 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make up` / `make down` | Démarre / arrête la stack |
 | `make sh` | Shell dans le conteneur PHP |
 | `make test` | Recrée la base de test et lance PHPUnit |
+| `make lint` | Vérifie le style (PHP-CS-Fixer) et lance l'analyse statique (PHPStan) |
+| `make fix` | Corrige automatiquement le style |
 | `make console c="…"` | Lance une commande Symfony |
 | `make db.reset` | Supprime et recrée la base |
 
@@ -50,6 +52,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Serveur | **FrankenPHP** (Caddy) | Un seul conteneur sert PHP et les fichiers statiques. |
 | Base de données | **PostgreSQL 18** | Imposé par le sujet. |
 | Environnement | **Docker Compose** | Un `make install` suffit, sans dépendance à une infrastructure externe. |
+| Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 
 ## Structure
 

@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := help
 
 DC   = docker compose
-EXEC = $(DC) exec php
+EXEC = $(DC) exec -T php
 
-.PHONY: help install up down build sh logs composer console db.migrate db.reset test
+.PHONY: help install up down build sh logs composer console db.migrate db.reset test lint fix phpstan cs cs.fix
 
 help: ## Liste les commandes disponibles
 	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -22,7 +22,7 @@ down: ## Arrête la stack
 	$(DC) down
 
 sh: ## Ouvre un shell dans le conteneur PHP
-	$(EXEC) bash
+	$(DC) exec php bash
 
 logs: ## Suit les logs de la stack
 	$(DC) logs -f
@@ -46,3 +46,17 @@ test: ## Lance la suite PHPUnit (base de test recréée)
 	$(EXEC) bin/console doctrine:database:create --env=test
 	$(EXEC) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
 	$(EXEC) bin/phpunit
+
+lint: cs phpstan ## Vérifie le code (style + analyse statique)
+
+fix: cs.fix ## Corrige automatiquement le style
+
+cs: ## PHP-CS-Fixer en mode vérification
+	$(EXEC) vendor/bin/php-cs-fixer fix --dry-run --diff
+
+cs.fix: ## PHP-CS-Fixer en mode correction
+	$(EXEC) vendor/bin/php-cs-fixer fix
+
+phpstan: ## Analyse statique PHPStan
+	$(EXEC) bin/console cache:warmup --env=dev
+	$(EXEC) vendor/bin/phpstan analyse --memory-limit=512M
