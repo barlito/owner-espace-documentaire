@@ -11,10 +11,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Entreprise accompagnée par OWNER. Son dossier documentaire est l'ensemble de ses documents.
+ * Company supported by OWNER. Its document folder is the set of its documents.
  *
- * Les documents appartiennent au client et non à un compte utilisateur : plusieurs
- * personnes d'une même entreprise pourront ainsi accéder au même dossier.
+ * Documents belong to the client rather than to a user account, so that several
+ * people from the same company can later access the same folder.
  */
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
 class Client

@@ -12,8 +12,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Compte de connexion. Un compte client est rattaché à un seul client ;
- * un compte administrateur n'est rattaché à aucun client.
+ * Login account. A client account belongs to exactly one client;
+ * an administrator account belongs to none.
  */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]

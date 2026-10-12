@@ -15,8 +15,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
- * Vérifie les garanties portées par le schéma PostgreSQL (contraintes, unicité).
- * La base de test est construite par les migrations : les CHECK y sont présents.
+ * Checks the guarantees enforced by the PostgreSQL schema (constraints, uniqueness).
+ * The test database is built from migrations, so CHECK constraints are present.
  */
 final class DocumentPersistenceTest extends KernelTestCase
 {
@@ -93,7 +93,7 @@ final class DocumentPersistenceTest extends KernelTestCase
     {
         try {
             $statement($this->em);
-            $this->fail(\sprintf('La contrainte "%s" aurait dû être violée.', $constraint));
+            $this->fail(\sprintf('Constraint "%s" should have been violated.', $constraint));
         } catch (DriverException $exception) {
             $this->assertSame('23514', $exception->getSQLState());
             $this->assertStringContainsString($constraint, $exception->getMessage());

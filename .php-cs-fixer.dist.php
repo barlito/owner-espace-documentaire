@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Règles reprises de barlito/utils, embarquées ici pour garder le dépôt autonome.
+// Rules taken from barlito/utils, embedded here to keep the repository self-contained.
 // https://cs.symfony.com/doc/rules/index.html
 
 $finder = (new PhpCsFixer\Finder())

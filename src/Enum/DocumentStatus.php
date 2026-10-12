@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Enum;
 
 /**
- * Situation d'un document vis-à-vis de son analyse.
- * Valeur dénormalisée : elle reflète l'issue de la tentative d'analyse la plus récente.
+ * Analysis state of a document.
+ * Denormalized value: it reflects the outcome of the latest analysis attempt.
  */
 enum DocumentStatus: string
 {
@@ -26,7 +26,7 @@ enum DocumentStatus: string
     }
 
     /**
-     * Variante du composant Badge.
+     * Badge component variant.
      */
     public function badgeVariant(): string
     {

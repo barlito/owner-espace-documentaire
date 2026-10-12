@@ -13,15 +13,15 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Pièce transmise par un client : un fichier accepté = un document.
+ * File submitted by a client: one accepted file = one document.
  *
- * Le client est porté directement par le document (et non déduit d'une jointure) :
- * l'isolation entre clients se résume à un filtre sur client_id.
+ * The client is stored on the document itself (not derived through a join),
+ * so isolating clients boils down to a client_id filter.
  */
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
 #[ORM\Index(name: 'idx_document_client_uploaded_at', columns: ['client_id', 'uploaded_at'])]
 #[ORM\Index(name: 'idx_document_client_status', columns: ['client_id', 'status'])]
-// Prédicat écrit sous la forme normalisée par PostgreSQL, sinon doctrine:schema:validate le voit comme différent.
+// Predicate written in PostgreSQL's normalized form, otherwise doctrine:schema:validate reports a difference.
 #[ORM\Index(name: 'idx_document_failed', columns: ['status'], options: ['where' => "((status)::text = 'failed'::text)"])]
 class Document
 {
@@ -37,8 +37,8 @@ class Document
     private string $originalFilename;
 
     /**
-     * Clé de stockage unique, indépendante du nom transmis : deux fichiers
-     * de même nom ne peuvent pas s'écraser.
+     * Unique storage key, independent from the submitted name: two files
+     * with the same name can never overwrite each other.
      */
     #[ORM\Column(length: 255, unique: true)]
     private string $storageKey;
@@ -79,7 +79,7 @@ class Document
         ?\DateTimeImmutable $periodEnd = null,
     ) {
         if (null !== $periodStart && null !== $periodEnd && $periodEnd < $periodStart) {
-            throw new \InvalidArgumentException('La fin de période ne peut pas précéder son début.');
+            throw new \InvalidArgumentException('The period end cannot precede its start.');
         }
 
         $this->id = Uuid::v7();

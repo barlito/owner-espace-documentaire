@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Enum;
 
 /**
- * Nature d'une pièce, regroupée par famille d'après la liste documentaire OWNER.
- * Les pièces rares sont regroupées : la liste décrit la diversité à accueillir,
- * elle n'impose pas un traitement par catégorie.
+ * Document nature, grouped by family according to the OWNER document list.
+ * Rare documents are merged: the list describes the diversity to support,
+ * it does not require a dedicated processing per category.
  */
 enum DocumentType: string
 {

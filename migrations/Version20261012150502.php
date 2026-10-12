@@ -11,7 +11,7 @@ final class Version20261012150502 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Clients, comptes utilisateurs et documents';
+        return 'Clients, user accounts and documents';
     }
 
     public function up(Schema $schema): void
@@ -26,7 +26,7 @@ final class Version20261012150502 extends AbstractMigration
         $this->addSql('CREATE INDEX idx_document_client_status ON document (client_id, status)');
         $this->addSql('CREATE INDEX idx_document_failed ON document (status) WHERE status = \'failed\'');
         $this->addSql('CREATE INDEX IDX_D8698A7619EB6921 ON document (client_id)');
-        // Contraintes non exprimables dans le mapping Doctrine, garanties par la base.
+        // Constraints that cannot be expressed in the Doctrine mapping, enforced by the database.
         $this->addSql('ALTER TABLE document ADD CONSTRAINT chk_document_period CHECK (period_start IS NULL OR period_end IS NULL OR period_end >= period_start)');
         $this->addSql("ALTER TABLE document ADD CONSTRAINT chk_document_status CHECK (status IN ('received', 'processing', 'analyzed', 'failed'))");
         $this->addSql('ALTER TABLE app_user ADD CONSTRAINT FK_88BDF3E919EB6921 FOREIGN KEY (client_id) REFERENCES client (id) NOT DEFERRABLE');
