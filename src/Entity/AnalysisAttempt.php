@@ -73,6 +73,9 @@ class AnalysisAttempt
         $this->requestedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * @internal only Document may drive an attempt, so that status and timeline stay in sync
+     */
     public function start(): void
     {
         $this->assertStatus(AttemptStatus::Pending);
@@ -81,6 +84,8 @@ class AnalysisAttempt
     }
 
     /**
+     * @internal only Document may drive an attempt, so that status and timeline stay in sync
+     *
      * @param array<string, mixed> $result
      */
     public function succeed(array $result): void
@@ -91,6 +96,9 @@ class AnalysisAttempt
         $this->finishedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * @internal only Document may drive an attempt, so that status and timeline stay in sync
+     */
     public function fail(FailureReason $reason): void
     {
         $this->assertStatus(AttemptStatus::Running);
