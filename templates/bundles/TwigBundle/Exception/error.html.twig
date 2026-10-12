@@ -1,0 +1,38 @@
+{#
+    Single error page for every status code (rendered only when debug is off).
+    It must not depend on the current user nor on the database: a 404 raised by the router
+    happens before the firewall loads the user, and a 5xx may come from the database itself.
+#}
+{% extends 'base.html.twig' %}
+
+{% set errors = {
+    400: {icon: 'lucide:circle-alert', title: 'Demande invalide', message: 'La demande n\'a pas pu être traitée. Revenez en arrière et réessayez.'},
+    403: {icon: 'lucide:lock', title: 'Accès refusé', message: 'Cette page est réservée à un autre type de compte.'},
+    404: {icon: 'lucide:search-x', title: 'Page introuvable', message: 'Cette page ou cette pièce n\'existe pas, ou n\'est pas accessible depuis votre compte.'},
+    405: {icon: 'lucide:circle-alert', title: 'Action indisponible', message: 'Cette action n\'est pas disponible de cette façon. Revenez en arrière et utilisez les boutons de la page.'},
+    413: {icon: 'lucide:file-up', title: 'Envoi trop volumineux', message: 'Les fichiers envoyés dépassent la taille autorisée. Envoyez moins de fichiers à la fois ou des fichiers plus légers.'},
+    429: {icon: 'lucide:timer', title: 'Trop de tentatives', message: 'Vous avez effectué trop de demandes en peu de temps. Patientez une minute avant de réessayer.'},
+} %}
+{% set server_error = {icon: 'lucide:server-crash', title: 'Une erreur est survenue', message: 'Le problème vient de notre côté. Réessayez dans quelques instants : les documents déjà transmis sont conservés.'} %}
+{% set client_error = {icon: 'lucide:circle-alert', title: 'Demande impossible', message: 'Cette demande n\'a pas pu aboutir. Revenez en arrière et réessayez.'} %}
+{% set error = errors[status_code] ?? (status_code >= 500 ? server_error : client_error) %}
+
+{% block title %}{{ error.title }}{% endblock %}
+
+{% block page %}
+    <main id="contenu" class="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+        <div class="w-full max-w-lg">
+            <a href="/" class="mb-8 inline-block">
+                <img src="{{ asset('images/owner-logo.png') }}" alt="OWNER, retour à l'accueil" width="120" height="18" class="h-[18px] w-auto">
+            </a>
+
+            <twig:Card :padded="false">
+                <twig:EmptyState heading="h1" icon="{{ error.icon }}" title="{{ error.title }}" description="{{ error.message }}">
+                    <twig:Button href="/" icon="lucide:arrow-left">Retour à mon espace</twig:Button>
+                </twig:EmptyState>
+            </twig:Card>
+
+            <p class="mt-4 text-center text-xs text-gray-400">Erreur {{ status_code }}</p>
+        </div>
+    </main>
+{% endblock %}
