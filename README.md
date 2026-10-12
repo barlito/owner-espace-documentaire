@@ -128,6 +128,12 @@ L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.
 
 Les composants sont visibles sur `/_styleguide` (environnements `dev` et `test` uniquement).
 
+### Pages d'erreur
+
+Une seule page (`templates/bundles/TwigBundle/Exception/error.html.twig`) adapte titre, message et icône au code : 400, 403, 404, 405, 413, 429, 5xx, et un message générique pour les autres. Elle ne dépend ni de l'utilisateur connecté (un 404 du routeur survient avant le chargement de la sécurité) ni de la base (une erreur 5xx peut venir d'elle). Le 404 reste volontairement vague (« n'existe pas, ou n'est pas accessible depuis votre compte ») pour ne jamais révéler l'existence d'une pièce d'un autre client.
+
+Ces pages ne s'affichent que hors mode debug ; en développement, elles se prévisualisent sur `/_error/404`, `/_error/500`, etc. Les routes `/_styleguide` et `/_error` n'existent pas en production (vérifié par `ProductionRoutesTest`).
+
 ## Structure
 
 ```
