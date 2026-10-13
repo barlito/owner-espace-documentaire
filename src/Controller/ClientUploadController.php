@@ -65,6 +65,8 @@ final class ClientUploadController extends AbstractController
             'id' => $document->getId()->toRfc4122(),
             'name' => $document->getOriginalFilename(),
             'status_label' => $document->getStatus()->label(),
+            // Server-rendered (escaped by Twig): the page shows it in the file's line, where live updates replace it.
+            'status_html' => $this->renderView('client/_upload_status.html.twig', ['document' => $document]),
             // Document pages come later: the dashboard lists the received documents for now.
             'url' => $this->generateUrl('client_dashboard'),
         ], Response::HTTP_CREATED);

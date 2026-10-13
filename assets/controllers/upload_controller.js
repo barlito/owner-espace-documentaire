@@ -7,7 +7,7 @@ import { Controller } from '@hotwired/stimulus';
  */
 export default class extends Controller {
     static targets = [
-        'input', 'dropzone', 'form', 'fallback', 'enhanced', 'live',
+        'input', 'dropzone', 'form', 'fallback', 'enhanced',
         'listSection', 'actions', 'list', 'rowTemplate', 'sendButton', 'sendLabel', 'sendHint',
         'summary', 'successAlert', 'successText', 'partialAlert', 'partialText', 'dashboardLink',
     ];
@@ -221,6 +221,8 @@ export default class extends Controller {
         }
 
         if (201 === request.status) {
+            // Markup rendered by our own server (no user data), whose element is then replaced by live updates.
+            if (payload?.status_html) item.element.querySelector('[data-badge="done"]').innerHTML = payload.status_html;
             this.settle(item, 'done');
         } else if (422 === request.status && payload?.error) {
             this.settle(item, 'refused', payload.error);
@@ -385,9 +387,11 @@ export default class extends Controller {
         return `${value.toFixed(1).replace(/\.0$/, '').replace('.', ',')} ${unit}`;
     }
 
+    // The page's single live region (base layout), shared with the live document updates.
     announce(message) {
-        if (!message) return;
-        this.liveTarget.textContent = '';
-        window.setTimeout(() => { this.liveTarget.textContent = message; }, 50);
+        const region = document.getElementById('live-status');
+        if (!message || !region) return;
+        region.textContent = '';
+        window.setTimeout(() => { region.textContent = message; }, 50);
     }
 }

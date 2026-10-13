@@ -38,6 +38,9 @@
 
                 {% block body %}{% endblock %}
             </main>
+
+            {# The page's only live region: announcements (live document updates, upload progress) are written here. #}
+            <p id="live-status" class="sr-only" role="status" aria-live="polite"></p>
         {% endblock %}
     </body>
 </html>
