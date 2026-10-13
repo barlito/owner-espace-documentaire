@@ -2,6 +2,8 @@
 
 Espace où un client dépose ses pièces comptables, juridiques et sociales, les retrouve et suit leur analyse (simulée), avec un espace administrateur de supervision et de relance.
 
+> **En bref** : `make install`, puis http://localhost:8000. Comptes (mot de passe `demo1234`) : `paul@boulangerie-martin.test` et `claire@lespetitspas.test` (clients), `admin@owner.test` (administratrice). Pour reproduire une analyse longue ou un échec, déposez un fichier dont le nom contient `-lent`, `-illisible` ou `-echec`.
+
 > Projet réalisé dans le cadre d'un test technique (5 jours). Pour une lecture rapide : [Lancer le projet](#lancer-le-projet), [Parcours de démonstration](#parcours-de-démonstration) et la [Note de livraison](#note-de-livraison) (hypothèses, choix, usage de l'IA, limites, vérifications, temps passé, suite).
 
 ## Prérequis
@@ -22,12 +24,13 @@ L'application est ensuite disponible sur http://localhost:8000.
 Sans `make` :
 
 ```bash
-docker compose up -d --build --wait
+docker compose up -d --build --wait php database
 docker compose exec php composer install
 docker compose exec php bin/console tailwind:build
 docker compose exec php bin/console doctrine:database:create --if-not-exists
 docker compose exec php bin/console doctrine:migrations:migrate -n
 docker compose exec php bin/console doctrine:fixtures:load -n --purge-with-truncate --group=demo
+docker compose up -d   # démarre le worker, une fois le code et la base prêts
 ```
 
 ### Données de démonstration
@@ -38,7 +41,7 @@ docker compose exec php bin/console doctrine:fixtures:load -n --purge-with-trunc
 - environ 14 mois d'historique pour les deux clients : ~60 documents pour la Boulangerie Martin, ~36 pour la Micro-crèche, avec de vrais fichiers stockés (PDF générés, quelques images) ;
 - tous les statuts : analysés pour la plupart, quelques documents en attente ou en cours d'analyse (déposés dans l'heure), des échecs de causes variées, et des documents relancés par l'administratrice (échec puis succès à la tentative n° 2, ou relance encore en attente).
 
-`make fixtures.volume` charge en plus un jeu de **test de charge** : 40 clients de 3 à 100 documents et un très gros client de 3 000 documents, soit environ 5 200 documents au total (une dizaine de secondes). Ces 40 comptes partagent le mot de passe `demo1234`.
+`make fixtures.volume` charge en plus un jeu de **test de charge** : 40 clients de 3 à 100 documents et un très gros client de 3 000 documents, soit environ 5 200 documents au total (une dizaine de secondes). Ces 41 comptes partagent le mot de passe `demo1234`.
 
 Les jeux sont déterministes (graine fixe) : seules les dates sont relatives au jour du chargement.
 
@@ -85,7 +88,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
    - tout autre nom : tirage (75 % de succès rapides, 10 % de succès longs, 15 % d'échecs).
 
    Un `.txt` est refusé avec sa raison. Les statuts évoluent sans recharger, sur la page de dépôt comme dans le dossier.
-3. **Côté administrateur — Sophie** (`admin@owner.test`) : la Supervision liste les échecs de tous les clients. Ouvrez celui déposé à l'étape 2, consultez les tentatives et l'historique technique, cliquez **Relancer** (un double clic ne crée qu'une tentative) et suivez la nouvelle issue en direct.
+3. **Côté administrateur — Sophie** (`admin@owner.test`) : l'onglet **Clients** liste les dossiers avec leurs compteurs par statut ; ouvrez la Boulangerie Martin puis la Micro-crèche : chaque dossier ne montre que ses pièces, et une pièce s'ouvre avec son client, son fichier et son résultat. La **Supervision** liste les échecs de tous les clients. Ouvrez celui déposé à l'étape 2, consultez les tentatives et l'historique technique, cliquez **Relancer** (un double clic ne crée qu'une tentative) et suivez la nouvelle issue en direct.
 4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance, avec le nom de l'administratrice.
 5. **Isolation** : connecté en Claire (`claire@lespetitspas.test`), l'URL d'une pièce de Paul répond 404.
 6. **Volume** : `make fixtures.volume` ajoute ~5 200 pièces, dont un client de 3 000 (`contact@groupe-delmas-restauration.test`, même mot de passe).
@@ -359,7 +362,7 @@ rabbitmq:
 
 ## Temps réel
 
-Quand une analyse avance, la page ouverte se met à jour toute seule : le tableau de bord (« Dernières pièces reçues ») et la liste des fichiers de la page de dépôt, y compris pour une pièce déposée depuis un autre onglet.
+Quand une analyse avance, la page ouverte se met à jour toute seule : « Mon dossier », la page d'une pièce et la liste des fichiers de la page de dépôt, y compris pour une pièce déposée depuis un autre onglet ; côté administrateur, la Supervision et la page d'une pièce.
 
 ### Fonctionnement
 
@@ -384,7 +387,8 @@ Rien n'en dépend : si le hub est indisponible, la page s'affiche et un recharge
 
 ### Choix et limites
 
-- Les lignes ajoutées en direct s'empilent sur le tableau de bord sans retirer les plus anciennes (la page ne montre « que » les 10 dernières à son chargement) : un rechargement revient à 10 lignes. Éliminer l'excédent demanderait du JavaScript pour un gain nul.
+- Les pièces reçues en direct s'insèrent en tête de « Mon dossier » (première page, 25 pièces) : le contrôleur Stimulus `live-list` retire les plus anciennes pour que la liste ne dépasse jamais une page, et met à jour le nombre total de pièces.
+- La vue admin du dossier d'un client n'est pas mise à jour en direct : c'est une vue de consultation, un rechargement montre l'état courant. La Supervision et la page d'une pièce, où l'administrateur suit une relance, le sont.
 - Les fixtures coupent l'écouteur (`QueueDocumentUpdateListener::mute()`) : des milliers de documents que personne ne regarde n'ont pas à remplir la file.
 - Avec RabbitMQ (voir plus haut), le message de publication cesse d'être atomique avec la base ; une mise à jour manquée est sans gravité (rechargement).
 
@@ -487,7 +491,7 @@ Ces pages ne s'affichent que hors mode debug ; en développement, elles se prév
 ## Structure
 
 ```
-.docker/        Dockerfile, Caddyfile et configuration PHP
+.docker/        Dockerfile, franken/Caddyfile et php/app.ini
 assets/         CSS (tokens Tailwind), JS (Stimulus), polices, icônes, images
 config/         Configuration Symfony
 src/            Code applicatif
