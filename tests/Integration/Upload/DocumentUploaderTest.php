@@ -139,6 +139,18 @@ final class DocumentUploaderTest extends KernelTestCase
         $this->assertRejected($file, 'Ce format n\'est pas accepté. Formats acceptés : PDF, JPEG, PNG, HEIC, Word (.docx), Excel (.xlsx).');
     }
 
+    public function testAFileWhoseNameDoesNotMatchItsContentIsRefused(): void
+    {
+        $this->assertRejected($this->upload('sample.pdf', 'facture.html'), 'Le nom de ce fichier ne correspond pas à son contenu (PDF). Renommez-le avec l\'extension .pdf');
+        $this->assertRejected($this->upload('sample.png', 'photo.jpg'), 'Le nom de ce fichier ne correspond pas à son contenu (PNG).');
+        $this->assertRejected($this->upload('sample.pdf', 'facture'), 'Le nom de ce fichier ne correspond pas à son contenu (PDF).');
+    }
+
+    public function testTheExtensionIsComparedCaseInsensitively(): void
+    {
+        $this->assertSame('PHOTO.PNG', $this->uploader->upload($this->upload('sample.png', 'PHOTO.PNG'), $this->user, null)->getOriginalFilename());
+    }
+
     public function testEmptyFileIsRefused(): void
     {
         $this->assertRejected($this->upload($this->temporaryFile(0), 'vide.pdf'), 'Ce fichier est vide.');
