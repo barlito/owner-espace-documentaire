@@ -20,7 +20,8 @@ build: ## Build the PHP image
 	$(DC) build
 
 up: ## Start the stack with its worker (http://localhost:8000)
-	$(DC) up -d --wait
+	$(DC) up -d --wait php database
+	$(DC) up -d worker
 
 down: ## Stop the stack
 	$(DC) down

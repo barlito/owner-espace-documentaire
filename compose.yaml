@@ -35,7 +35,12 @@ services:
         <<: *php
         command: ["php", "bin/console", "messenger:consume", "async", "scheduler_analysis", "--time-limit=3600", "--memory-limit=128M", "-vv"]
         restart: unless-stopped
-        # The image healthcheck probes Caddy, which the worker does not run.
+        # Only the code: the Caddy volumes belong to php. Sharing them made the two containers race to
+        # initialise the same new volume on a fresh machine (CI), and one of them failed to start.
+        volumes:
+            - ./:/app
+        # The image healthcheck probes Caddy, which the worker does not run. Without a healthcheck the worker
+        # cannot be awaited by "up --wait": make up waits for php and database, then starts it.
         healthcheck:
             disable: true
 
