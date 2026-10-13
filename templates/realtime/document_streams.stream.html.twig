@@ -20,8 +20,9 @@
     <template>{{ include('client/_upload_status.html.twig') }}</template>
 </turbo-stream>
 
-{# Announcement for screen readers, in the page's single live region (templates/base.html.twig) #}
-<turbo-stream action="update" target="live-status">
+{# Announcement for screen readers, in the page's single live region (templates/base.html.twig): pages that list
+   documents announce every change, a document page only the changes of its own document. #}
+<turbo-stream action="update" targets="#live-status[data-live-scope='documents'], #live-status[data-live-scope='document-{{ document.id }}']">
     <template>{{ document.originalFilename }} : {{ created ? 'pièce reçue' : document.status.announcement }}.</template>
 </turbo-stream>
 

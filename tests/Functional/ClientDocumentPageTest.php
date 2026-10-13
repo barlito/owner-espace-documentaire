@@ -170,7 +170,7 @@ final class ClientDocumentPageTest extends WebTestCase
         $crawler = $this->browser->request('GET', $this->path($document));
 
         $status = $crawler->filter('#document-page-status-' . $document->getId());
-        $this->assertStringContainsString('L\'équipe OWNER a été prévenue et relancera l\'analyse', $status->text());
+        $this->assertStringContainsString('L\'équipe OWNER a été prévenue et s\'en occupe', $status->text());
         $this->assertCount(0, $status->selectLink('Déposer une nouvelle version'));
     }
 
@@ -382,6 +382,29 @@ final class ClientDocumentPageTest extends WebTestCase
         $crawler = $this->browser->request('GET', '/espace');
 
         $this->assertSame($this->path($document), $crawler->selectLink('Bilan.pdf')->attr('href'));
+    }
+
+    public function testTheLiveRegionOnlyAnnouncesTheViewedDocumentWhileTheListAnnouncesThemAll(): void
+    {
+        $document = $this->storedDocument('Bilan.pdf');
+        $this->browser->loginUser($this->claire);
+
+        $page = $this->browser->request('GET', $this->path($document));
+        $this->assertSame('document-' . $document->getId()->toRfc4122(), $page->filter('#live-status')->attr('data-live-scope'));
+
+        $list = $this->browser->request('GET', '/espace');
+        $this->assertSame('documents', $list->filter('#live-status')->attr('data-live-scope'));
+    }
+
+    public function testTheBackLinkReturnsToTheList(): void
+    {
+        $document = $this->storedDocument('Bilan.pdf');
+        $this->browser->loginUser($this->claire);
+
+        $link = $this->browser->request('GET', $this->path($document))->selectLink('Retour à mon dossier');
+
+        $this->assertSame('/espace', $link->attr('href'));
+        $this->assertSame('back-to-list', $link->attr('data-controller'));
     }
 
     private function path(Document $document): string

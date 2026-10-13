@@ -2,8 +2,10 @@
 
 {% block title %}{{ document.originalFilename }}{% endblock %}
 
+{% block live_scope %}document-{{ document.id }}{% endblock %}
+
 {% block body %}
-    <a href="{{ path('client_dashboard') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-navy-200 hover:text-navy-500">
+    <a href="{{ path('client_dashboard') }}" data-controller="back-to-list" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-navy-200 hover:text-navy-500">
         {{ ux_icon('lucide:arrow-left', {class: 'size-4'}) }}
         Retour à mon dossier
     </a>

@@ -32,7 +32,7 @@ final class ClientFailureWording
     {
         return match ($reason) {
             FailureReason::UnreadableFile => 'Le fichier semble illisible. Déposez une version plus nette (scan à plat, bien éclairé, texte lisible).',
-            default => 'L\'analyse n\'a pas pu aboutir. L\'équipe OWNER a été prévenue et relancera l\'analyse : vous n\'avez rien à faire.',
+            default => 'L\'analyse n\'a pas pu aboutir. L\'équipe OWNER a été prévenue et s\'en occupe : vous n\'avez rien à faire.',
         };
     }
 

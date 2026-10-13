@@ -52,7 +52,7 @@
                 <span class="text-sm text-gray-500">Filtres actifs :</span>
                 <ul class="contents">
                     {% for chip in chips %}
-                        <li>
+                        <li class="min-w-0 max-w-full">
                             <a
                                 href="{{ path('client_dashboard', filters.without(chip.param).query) }}"
                                 data-turbo-frame="_top"

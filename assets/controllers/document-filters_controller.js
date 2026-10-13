@@ -15,6 +15,7 @@ export default class extends Controller {
     connect() {
         this.timer = null;
         this.syncWithUrl();
+        this.rememberListUrl();
     }
 
     disconnect() {
@@ -44,6 +45,17 @@ export default class extends Controller {
         const region = document.getElementById('live-status');
         if (message && region) {
             region.textContent = message;
+        }
+        // The frame advances the URL right after rendering.
+        setTimeout(() => this.rememberListUrl(), 0);
+    }
+
+    // Read by the document page's "Retour à mon dossier" link, to come back to the same search, filters and page.
+    rememberListUrl() {
+        try {
+            sessionStorage.setItem('document-list-url', window.location.pathname + window.location.search);
+        } catch {
+            // Storage unavailable (private mode…): the link keeps pointing to the unfiltered list.
         }
     }
 
