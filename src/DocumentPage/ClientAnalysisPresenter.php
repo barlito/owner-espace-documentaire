@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DocumentPage;
 
-use App\Dossier\PeriodLabel;
+use App\DocumentList\PeriodLabel;
 use App\Entity\Document;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
