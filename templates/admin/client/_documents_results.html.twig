@@ -5,7 +5,7 @@
 
 {% if folderEmpty %}
     <twig:Card>
-        <twig:EmptyState icon="lucide:folder-open" title="Ce client n'a encore déposé aucune pièce" />
+        <twig:EmptyState heading="h2" icon="lucide:folder-open" title="Ce client n'a encore déposé aucune pièce" />
     </twig:Card>
 {% else %}
     {% set total = page.total %}

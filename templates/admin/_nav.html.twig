@@ -1,8 +1,10 @@
 {# Navigation of the back office, under the header. Only rendered for administrators (see base.html.twig). #}
 {% set route = app.request.attributes.get('_route') %}
+{# A document page belongs to the section it was opened from (its back link, see ReturnPath). #}
+{% set fromClients = 'admin_document_show' == route and backPath is defined and backPath starts with '/admin/clients' %}
 {% set items = [
-    {label: 'Supervision', path: path('admin_dashboard'), icon: 'lucide:shield-check', active: 'admin_dashboard' == route},
-    {label: 'Clients', path: path('admin_clients'), icon: 'lucide:building-2', active: route in ['admin_clients', 'admin_client_show']},
+    {label: 'Supervision', path: path('admin_dashboard'), icon: 'lucide:shield-check', current: 'admin_dashboard' == route, active: route in ['admin_dashboard', 'admin_document_show'] and not fromClients},
+    {label: 'Clients', path: path('admin_clients'), icon: 'lucide:building-2', current: 'admin_clients' == route, active: route in ['admin_clients', 'admin_client_show'] or fromClients},
 ] %}
 <nav aria-label="Administration" class="border-b border-gray-50 bg-white">
     <ul class="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
@@ -11,7 +13,7 @@
                 <a
                     href="{{ item.path }}"
                     class="-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold {{ item.active ? 'border-primary-500 text-navy-500' : 'border-transparent text-gray-500 hover:text-navy-500' }}"
-                    {% if item.active %}aria-current="page"{% endif %}
+                    {% if item.active %}aria-current="{{ item.current ? 'page' : 'true' }}"{% endif %}
                 >
                     {{ ux_icon(item.icon, {class: 'size-4 shrink-0'}) }}
                     {{ item.label }}

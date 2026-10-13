@@ -284,6 +284,19 @@ final class AdminDocumentPageTest extends WebTestCase
         $this->assertSame('/admin/clients', $crawler->filter('input[name=retour]')->attr('value'));
     }
 
+    public function testTheNavigationHighlightsTheSectionTheDocumentWasOpenedFrom(): void
+    {
+        $document = $this->failedDocument($this->paul);
+        $this->browser->loginUser($this->admin);
+
+        $fromSupervision = $this->browser->request('GET', $this->path($document));
+        $this->assertSame('Supervision', trim($fromSupervision->filter('nav[aria-label=Administration] [aria-current=true]')->text()));
+
+        $fromClient = $this->browser->request('GET', $this->path($document), ['retour' => '/admin/clients/' . $this->paul->getClient()?->getId()]);
+        $this->assertSame('Clients', trim($fromClient->filter('nav[aria-label=Administration] [aria-current=true]')->text()));
+        $this->assertCount(0, $fromClient->filter('nav[aria-label=Administration] [aria-current=page]'), 'The document page is not the list itself.');
+    }
+
     #[DataProvider('foreignReturnPaths')]
     public function testOnlyInternalReturnPathsAreAccepted(string $retour): void
     {
