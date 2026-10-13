@@ -26,6 +26,19 @@ enum DocumentStatus: string
     }
 
     /**
+     * Short phrase read aloud by assistive technologies when the status changes live ("<file name> : <phrase>.").
+     */
+    public function announcement(): string
+    {
+        return match ($this) {
+            self::Pending => 'analyse en attente',
+            self::Processing => 'analyse en cours',
+            self::Analyzed => 'analyse terminée',
+            self::Failed => 'échec de l\'analyse',
+        };
+    }
+
+    /**
      * Badge component variant.
      */
     public function badgeVariant(): string

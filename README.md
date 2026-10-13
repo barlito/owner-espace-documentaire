@@ -87,6 +87,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
 | Horloge | **`symfony/clock`** | Les entités lisent l'heure via `now()` : identique en production, mais les fixtures (et les tests) peuvent figer ou avancer l'horloge pour produire un historique daté de façon cohérente, sans setter ni réflexion. |
 | Messagerie | **Symfony Messenger** (transport Doctrine) + **Scheduler** | File d'analyse dans PostgreSQL, sans service supplémentaire. Voir « Analyse simulée ». |
+| Temps réel | **Mercure** (hub intégré à FrankenPHP) + **Turbo Streams** | Les statuts changent sous les yeux de l'utilisateur, sans rechargement ni service supplémentaire. Voir « Temps réel ». |
 | Stockage | **Flysystem** (`league/flysystem-bundle`) | Les fichiers passent par une abstraction : disque local aujourd'hui (`var/storage/documents`, hors de `public/`), adaptateur mémoire en test, un bucket S3 demain sans toucher au code métier. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 
@@ -180,7 +181,7 @@ Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProviderInt
 | Succès long | 10 % | 60 à 120 s |
 | Échec (fichier illisible, format non pris en charge, inconnu) | 15 % | 3 à 12 s |
 
-- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques.
+- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques (bulletin, DSN, situation comptable) et aucune période pour un document « Autre » : une période absente vaut mieux qu'une période inventée.
 - **Relance** : une tentative n°2 ou plus réussit toujours, **sauf** si la précédente a échoué sur un fichier illisible (une relance ne répare pas un fichier).
 - L'échec « interrompu » n'est jamais tiré au sort : il est réservé à la réconciliation.
 
@@ -237,6 +238,54 @@ rabbitmq:
 
 (Déclarer aussi le volume `rabbitmq_data`.) Ce qu'on perd : l'envoi n'est **plus atomique** avec l'écriture en base (un crash entre le commit et la publication perd le message ; l'inverse, publier avant un commit qui échoue, est géré par les handlers qui ignorent ce qu'ils ne reconnaissent pas). Il faut soit un pattern outbox, soit accepter la réconciliation comme filet de sécurité : elle remet déjà en file les documents jamais pris en charge, c'est donc suffisant ici.
 
+## Temps réel
+
+Quand une analyse avance, la page ouverte se met à jour toute seule : le tableau de bord (« Dernières pièces reçues ») et la liste des fichiers de la page de dépôt, y compris pour une pièce déposée depuis un autre onglet.
+
+### Fonctionnement
+
+1. **Hub Mercure** : celui de FrankenPHP, déclaré par le bloc `mercure` du `Caddyfile`. Aucun conteneur de plus. Il sert sur l'origine de l'application (`/.well-known/mercure`), ce qui permet au navigateur d'envoyer le cookie d'autorisation sans configuration CORS particulière.
+2. **Publication atomique** : `QueueDocumentUpdateListener` (écouteur Doctrine) repère à chaque `flush` les documents insérés ou dont le statut change et met en file un message `PublishDocumentUpdate` par document. Comme le transport Doctrine partage la connexion de l'ORM, ce message est écrit dans la transaction de l'appelant (dépôt, handlers d'analyse) : un changement annulé n'est jamais annoncé. C'est l'**unique** point de publication, personne d'autre n'a à y penser. Il passe par un bus dédié (`messenger.bus.realtime`) sans `doctrine_transaction`, dont le `flush` final ne doit pas être rejoué depuis un `flush`.
+3. **Le worker publie** : `PublishDocumentUpdateHandler` relit le document (son état *au moment de la publication*, pas celui du message), le rend en actions Turbo Stream (`templates/realtime/document_streams.stream.html.twig`) et le publie sur le hub.
+4. **Le navigateur applique** : `turbo_stream_from()` ajoute un `<turbo-mercure-stream-source>` à la page ; Turbo applique les actions sur les éléments d'identifiant connu (`document-{uuid}`, `upload-status-{uuid}`, `dashboard-documents`). Une cible absente de la page est ignorée : chaque page ne réagit qu'à ce qu'elle affiche.
+
+### Confidentialité
+
+- Un topic **par client** : `/clients/{uuid}/documents` (défini dans `App\Realtime\Topics`, seul endroit où les topics sont nommés). Toute publication est `private`.
+- Le hub n'accepte **aucun abonné anonyme**. La page pose un cookie `mercureAuthorization` (JWT, HttpOnly, `SameSite=Strict`) dont le claim `subscribe` ne contient que le topic du client connecté : connaître l'uuid d'un autre client ne suffit pas à écouter ses mises à jour. Le navigateur ne peut jamais publier. Les pages admin ne posent pas ce cookie. Testé dans `tests/Functional/RealtimeTest.php` (le JWT est décodé et son contenu vérifié).
+- Une seule clé (`MERCURE_JWT_SECRET`) signe le jeton de publication et les cookies, et le hub la vérifie : seule l'application émet des jetons. Le hub est en mode de compatibilité Mercure 0.x (`protocol_version_compatibility 8`) car `symfony/mercure` n'émet pas encore les jetons RFC 9068 du mode 1.0.
+
+### Accessibilité
+
+Une seule région `aria-live="polite"` par page (`#live-status`, dans le layout) : chaque mise à jour y annonce une phrase courte (« Bulletin-mars.pdf : analyse terminée. »). Les badges ne sont pas des régions vives. Le surlignage de la ligne mise à jour est désactivé avec `prefers-reduced-motion`.
+
+### Sans Mercure
+
+Rien n'en dépend : si le hub est indisponible, la page s'affiche et un rechargement montre l'état courant, le navigateur se reconnecte seul quand le hub revient. Si la publication échoue, le message est rejoué 3 fois puis part en file `failed` ; l'état en base n'est jamais perdu, seul le direct l'est. Le dépôt renvoie aussi le badge de statut dans sa réponse, donc la ligne est correcte même si le direct n'a pas encore démarré.
+
+### Choix et limites
+
+- Les lignes ajoutées en direct s'empilent sur le tableau de bord sans retirer les plus anciennes (la page ne montre « que » les 10 dernières à son chargement) : un rechargement revient à 10 lignes. Éliminer l'excédent demanderait du JavaScript pour un gain nul.
+- Les fixtures coupent l'écouteur (`QueueDocumentUpdateListener::mute()`) : des milliers de documents que personne ne regarde n'ont pas à remplir la file.
+- Avec RabbitMQ (voir plus haut), le message de publication cesse d'être atomique avec la base ; une mise à jour manquée est sans gravité (rechargement).
+
+### Brancher l'admin (ou la page d'un document) plus tard
+
+1. Nommer le topic dans `Topics` (par exemple `Topics::admin()`) et poser le cookie correspondant sur les seules pages admin.
+2. Ajouter ses actions Turbo Stream dans `document_streams.stream.html.twig` (ou rendre un second flux dans `DocumentStreamRenderer`) et publier un second `Update` sur ce topic dans `PublishDocumentUpdateHandler`. Rien ne change côté écouteur : il décide déjà « ce document a changé ».
+3. Donner à chaque élément visé un `id` stable, comme `document-{uuid}`.
+
+### Variables d'environnement
+
+| Variable | Rôle | Valeur par défaut (dev) |
+| --- | --- | --- |
+| `MERCURE_URL` | URL de publication, via le réseau Docker (conteneurs `php` et `worker`) | `http://php/.well-known/mercure` |
+| `MERCURE_PUBLIC_URL` | URL du hub pour le navigateur | `http://localhost:${HTTP_PORT}/.well-known/mercure` (posée par `compose.yaml`) |
+| `MERCURE_JWT_SECRET` | Clé HS256 : lue par Symfony **et** par Caddy | clé de développement dans `.env` et `compose.yaml` |
+| `MERCURE_CORS_ORIGINS` | Origines acceptées par le hub | `http://localhost:${HTTP_PORT}` |
+
+En production, `MERCURE_JWT_SECRET` doit être un secret aléatoire d'au moins 256 bits (`openssl rand -hex 32`) fourni par l'environnement réel, jamais la valeur de développement ; `MERCURE_URL`, `MERCURE_PUBLIC_URL` et `MERCURE_CORS_ORIGINS` suivent le domaine réel.
+
 ## Direction artistique
 
 L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.com/) : les couleurs, le rayon (`10px`) et les échelles de nuances sont relevés directement dans le CSS du site.
@@ -281,6 +330,7 @@ src/
 ├── Command/  Controller/  EventListener/  Message/  MessageHandler/  Scheduler/   points d'entrée
 ├── Entity/  Enum/  Exception/  Repository/                                       modèle et persistance
 ├── Security/  Twig/  DataFixtures/
+├── Realtime/    nommage des topics Mercure et rendu des mises à jour en direct
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
     ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/

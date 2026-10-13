@@ -111,3 +111,13 @@
         @apply outline-2 outline-offset-2 outline-primary-500;
     }
 }
+
+/* Brief highlight of a row updated live, so the change does not go unnoticed. */
+@keyframes row-highlight {
+    from { background-color: var(--color-primary-25); }
+    to { background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .row-highlight { animation: row-highlight 2.5s ease-out; }
+}

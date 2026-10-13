@@ -19,5 +19,22 @@
 		?Permissions-Policy "browsing-topics=()"
 	}
 
+	# Hub built into FrankenPHP, served on the application's own origin so the browser sends the
+	# mercureAuthorization cookie with the EventSource request. One key signs everything: the application
+	# issues the publisher token and the subscriber cookies, the hub only verifies them. No anonymous
+	# subscriber: every update is private (see README, "Temps réel").
+	mercure {
+		# The hub speaks Mercure 1.0, whose tokens follow RFC 9068; symfony/mercure is configured with the
+		# legacy 0.x token format (config/packages/mercure.yaml), which this option keeps accepting.
+		protocol_version_compatibility 8
+		publisher_jwt {env.MERCURE_JWT_SECRET} HS256
+		subscriber_jwt {env.MERCURE_JWT_SECRET} HS256
+		cors_origins {$MERCURE_CORS_ORIGINS:http://localhost:8000}
+		publish_origins {$MERCURE_CORS_ORIGINS:http://localhost:8000}
+		transport bolt {
+			path /app/var/mercure.db
+		}
+	}
+
 	php_server
 }

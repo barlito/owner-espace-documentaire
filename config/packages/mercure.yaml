@@ -1,0 +1,14 @@
+# The hub is built into FrankenPHP (.docker/franken/Caddyfile). The app publishes through the in-network URL and
+# hands browsers the public one; subscribers are authorized by the mercureAuthorization cookie (see App\Realtime).
+mercure:
+    # Cookie lifetime: an idle tab must be able to reconnect after a network drop, the cookie is reissued on each page load.
+    default_cookie_lifetime: 43200
+    hubs:
+        default:
+            url: '%env(MERCURE_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            # symfony/mercure does not issue RFC 9068 tokens for the hub's 1.0 mode yet: legacy token format.
+            protocol_version: '0.x'
+            jwt:
+                secret: '%env(MERCURE_JWT_SECRET)%'
+                publish: '*'

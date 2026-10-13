@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Entity\Document;
 use App\Message\StartAnalysis;
+use App\Tests\Support\SentMessages;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\UnableToWriteFile;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -73,8 +74,9 @@ final class UploadTest extends WebTestCase
         $this->assertResponseStatusCodeSame(201);
         $transport = static::getContainer()->get('messenger.transport.async');
         $this->assertInstanceOf(InMemoryTransport::class, $transport);
-        $this->assertCount(1, $transport->getSent());
-        $this->assertInstanceOf(StartAnalysis::class, $transport->getSent()[0]->getMessage());
+        $sent = SentMessages::analysis($transport);
+        $this->assertCount(1, $sent);
+        $this->assertInstanceOf(StartAnalysis::class, $sent[0]->getMessage());
     }
 
     public function testARefusedFileQueuesNothing(): void

@@ -1,0 +1,5 @@
+{# Subscribes the page to its client's private topic and issues the subscription cookie, limited to that topic
+   alone (never a pattern, never another client's). Without Mercure the page works the same, minus live updates. #}
+{% if app.user and app.user.client %}
+    {{ turbo_stream_from(client_topic(app.user.client), private: true) }}
+{% endif %}

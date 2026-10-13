@@ -11,35 +11,30 @@
         <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
     </div>
 
+    {# Live updates: the stream targets are #dashboard-empty, #dashboard-documents and each row's id.
+       The card only shows once it holds a row, so the first document received live appears without a reload. #}
     {% if documents is empty %}
-        <twig:Card>
-            <twig:EmptyState
-                icon="lucide:folder-open"
-                title="Votre dossier est encore vide"
-                description="Déposez vos documents comptables, juridiques et sociaux : vous suivrez ici leur réception puis leur analyse."
-            >
-                <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
-            </twig:EmptyState>
-        </twig:Card>
-    {% else %}
-        <twig:Card :padded="false">
-            <h2 class="border-b border-gray-50 px-5 py-4 text-lg sm:px-6">Dernières pièces reçues</h2>
-            <ul class="divide-y divide-gray-50">
-                {% for document in documents %}
-                    {% set status = document.status %}
-                    <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
-                        <div class="min-w-0 flex-1 basis-64">
-                            <p class="truncate font-medium text-navy-500" title="{{ document.originalFilename }}">{{ document.originalFilename }}</p>
-                            <p class="mt-0.5 text-sm text-gray-500">
-                                {{ document.type ? document.type.label : 'Non catégorisée' }}
-                                · {{ document.uploadedAt|date('d/m/Y \\à H:i') }}
-                                · {{ document.size|file_size }}
-                            </p>
-                        </div>
-                        <twig:Badge variant="{{ status.badgeVariant }}" icon="{{ status.icon }}">{{ status.label }}</twig:Badge>
-                    </li>
-                {% endfor %}
-            </ul>
-        </twig:Card>
+        <div id="dashboard-empty">
+            <twig:Card>
+                <twig:EmptyState
+                    icon="lucide:folder-open"
+                    title="Votre dossier est encore vide"
+                    description="Déposez vos documents comptables, juridiques et sociaux : vous suivrez ici leur réception puis leur analyse."
+                >
+                    <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
+                </twig:EmptyState>
+            </twig:Card>
+        </div>
     {% endif %}
+
+    <twig:Card :padded="false" class="hidden has-[li]:block">
+        <h2 class="border-b border-gray-50 px-5 py-4 text-lg sm:px-6">Dernières pièces reçues</h2>
+        <ul id="dashboard-documents" class="divide-y divide-gray-50">
+            {% for document in documents %}
+                {{ include('client/_document_row.html.twig') }}
+            {% endfor %}
+        </ul>
+    </twig:Card>
+
+    {{ include('realtime/_client_stream.html.twig') }}
 {% endblock %}

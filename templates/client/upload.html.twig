@@ -27,8 +27,6 @@
             data-upload-interrupted-message-value="{{ policy.interruptedMessage }}"
             class="min-w-0 space-y-6"
         >
-            <p class="sr-only" role="status" aria-live="polite" data-upload-target="live"></p>
-
             <form method="post" action="{{ path('client_upload_batch') }}" enctype="multipart/form-data" data-turbo="false" data-upload-target="form" data-action="submit->upload#preventNativeSubmit">
                 <input type="hidden" name="_token" value="{{ csrf_token('upload') }}">
 
@@ -120,6 +118,7 @@
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 <span data-badge="pending"><twig:Badge variant="neutral" icon="lucide:clock">En attente d'envoi</twig:Badge></span>
                                 <span data-badge="sending" class="hidden"><twig:Badge variant="info" icon="lucide:loader-circle" class="[&_svg]:animate-spin motion-reduce:[&_svg]:animate-none">Envoi en cours</twig:Badge></span>
+                                {# Replaced by the analysis status, which then follows the document live. #}
                                 <span data-badge="done" class="hidden"><twig:Badge variant="success" icon="lucide:circle-check">Reçue</twig:Badge></span>
                                 <span data-badge="refused" class="hidden"><twig:Badge variant="danger" icon="lucide:circle-x">Refusée</twig:Badge></span>
                                 <span data-badge="invalid" class="hidden"><twig:Badge variant="danger" icon="lucide:circle-x">Refusé</twig:Badge></span>
@@ -171,4 +170,6 @@
             </twig:Alert>
         </aside>
     </div>
+
+    {{ include('realtime/_client_stream.html.twig') }}
 {% endblock %}

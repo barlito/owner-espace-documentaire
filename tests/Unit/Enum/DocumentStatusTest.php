@@ -26,4 +26,13 @@ final class DocumentStatusTest extends TestCase
         $this->assertSame('En attente d\'analyse', DocumentStatus::Pending->label());
         $this->assertSame('Échec de l\'analyse', DocumentStatus::Failed->label());
     }
+
+    public function testEveryStatusHasADistinctAnnouncementForScreenReaders(): void
+    {
+        $announcements = array_map(static fn (DocumentStatus $status): string => $status->announcement(), DocumentStatus::cases());
+
+        $this->assertCount(\count(DocumentStatus::cases()), array_unique($announcements));
+        $this->assertSame('analyse terminée', DocumentStatus::Analyzed->announcement());
+        $this->assertSame('échec de l\'analyse', DocumentStatus::Failed->announcement());
+    }
 }
