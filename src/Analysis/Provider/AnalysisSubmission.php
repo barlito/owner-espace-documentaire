@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Analysis\Provider;
 
 /**
  * What a provider answers when a document is submitted.

@@ -26,7 +26,7 @@ services:
 
     # Analysis provider: the place to change to plug a real one (see README, "Brancher un vrai fournisseur"),
     # together with its longest processing time below.
-    App\Analysis\AnalysisProvider: '@App\Analysis\Simulation\SimulatedAnalysisProvider'
+    App\Analysis\Provider\AnalysisProvider: '@App\Analysis\Simulation\SimulatedAnalysisProvider'
 
     App\Analysis\ReconciliationSettings:
         arguments:

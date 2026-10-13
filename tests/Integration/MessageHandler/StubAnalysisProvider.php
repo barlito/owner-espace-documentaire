@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\MessageHandler;
 
-use App\Analysis\AnalysisOutcome;
-use App\Analysis\AnalysisProvider;
-use App\Analysis\AnalysisSubmission;
+use App\Analysis\Provider\AnalysisOutcome;
+use App\Analysis\Provider\AnalysisProvider;
+use App\Analysis\Provider\AnalysisSubmission;
 use App\Entity\Document;
 
 /**

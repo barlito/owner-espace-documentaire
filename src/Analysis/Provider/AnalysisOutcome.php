@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Analysis\Provider;
 
+use App\Analysis\AnalysisResult;
 use App\Enum\FailureReason;
 
 /**

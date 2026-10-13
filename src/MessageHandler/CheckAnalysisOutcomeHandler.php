@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\MessageHandler;
 
-use App\Analysis\AnalysisProvider;
+use App\Analysis\Provider\AnalysisProvider;
 use App\Enum\DocumentStatus;
 use App\Message\CheckAnalysisOutcome;
 use App\Repository\DocumentRepository;
