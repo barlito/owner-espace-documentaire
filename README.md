@@ -304,6 +304,24 @@ Rien n'en dépend : si le hub est indisponible, la page s'affiche et un recharge
 
 En production, `MERCURE_JWT_SECRET` doit être un secret aléatoire d'au moins 256 bits (`openssl rand -hex 32`) fourni par l'environnement réel, jamais la valeur de développement ; `MERCURE_URL`, `MERCURE_PUBLIC_URL` et `MERCURE_CORS_ORIGINS` suivent le domaine réel.
 
+## Page d'une pièce
+
+Le client ouvre une pièce depuis « Mon dossier » (le nom du fichier est un lien) : statut et résultat de l'analyse, aperçu du fichier, téléchargement et historique daté, mis à jour en direct (les blocs `#document-page-status-{uuid}` et `#document-page-timeline-{uuid}` sont remplacés par les mêmes flux Mercure que le reste, voir « Temps réel »).
+
+| Route | Rôle |
+| --- | --- |
+| `GET /espace/pieces/{id}` (`client_document_show`) | La page |
+| `GET /espace/pieces/{id}/fichier` (`client_document_file`) | Téléchargement (`Content-Disposition: attachment`) |
+| `GET /espace/pieces/{id}/apercu` (`client_document_preview`) | Affichage dans la page (PDF, JPEG et PNG uniquement, 404 sinon) |
+
+**Cloisonnement.** Les trois routes cherchent la pièce par `findOneForClient($id, $clientDuCompteConnecté)` : le client ne vient jamais de la requête, et la pièce d'un autre client répond 404, comme une pièce inexistante (un identifiant mal formé aussi). Le voter `DOCUMENT_VIEW` est une seconde barrière. Un administrateur n'a pas accès à ces routes (403) : son propre écran viendra avec l'espace admin.
+
+**Fichiers.** Ils sont lus depuis Flysystem en flux (`readStream`), jamais chargés en mémoire. La réponse porte le type MIME **détecté à l'envoi** (jamais déduit de l'extension), `Content-Length`, `X-Content-Type-Options: nosniff` et `Cache-Control: private` (aucun cache partagé ne garde un document client). Le nom d'origine passe par `HeaderUtils::makeDisposition` avec un repli ASCII pour les navigateurs qui ignorent `filename*`. Un fichier absent du stockage est journalisé (erreur) et répond 404 : jamais de 500.
+
+**En-têtes de l'aperçu.** Le `Caddyfile` interdit par défaut tout cadrage (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) ; l'aperçu les remplace (le `?` du Caddyfile laisse la valeur de l'application l'emporter) par `X-Frame-Options: SAMEORIGIN` et `frame-ancestors 'self'` : seules nos pages peuvent l'afficher dans un `<iframe>`. Les images ajoutent `sandbox` (aucun script, origine opaque). Le PDF n'a pas `sandbox` : le lecteur PDF intégré aux navigateurs peut refuser de s'afficher dans une iframe sandboxée (Chromium l'accepte, ce n'est pas garanti ailleurs) ; le fichier n'est de toute façon jamais interprété comme du HTML, puisque le type est détecté côté serveur et que `nosniff` interdit au navigateur d'en deviner un autre. Sur mobile, l'aperçu PDF n'est pas intégré : un bouton l'ouvre dans le lecteur du navigateur.
+
+**Historique.** Il est présenté du plus ancien au plus récent : il se lit comme une histoire, et une nouvelle étape arrive en bas. Les événements ne stockent que des codes ; `App\DocumentPage\ClientTimelinePresenter` en produit le texte pour le client (« Pièce reçue », « Analyse démarrée », « Analyse terminée », « Échec de l'analyse » avec une cause en langage courant, « Analyse relancée par l'équipe OWNER »). Le client ne voit **jamais** le nom de l'administrateur ni de cause technique. La variante admin (cause technique, nom de l'administrateur) sera une autre classe produisant les mêmes `TimelineEntry`.
+
 ## Direction artistique
 
 L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.com/) : les couleurs, le rayon (`10px`) et les échelles de nuances sont relevés directement dans le CSS du site.
@@ -351,6 +369,7 @@ src/
 ├── Realtime/    nommage des topics Mercure et rendu des mises à jour en direct
 ├── DocumentList/ métier de « Mon dossier » : filtres de recherche, pagination, libellés de période
 ├── Doctrine/    extensions DQL (fonction `UNACCENT`)
+├── DocumentPage/ page d'une pièce côté client : réponses de fichier, textes de l'historique et de l'analyse
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
     ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/
