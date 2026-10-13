@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Analysis\AnalysisResult;
 use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
@@ -33,6 +34,9 @@ use function Symfony\Component\Clock\now;
 #[ORM\Index(name: 'idx_document_client_status', columns: ['client_id', 'status'])]
 // Predicate written in PostgreSQL's normalized form, otherwise doctrine:schema:validate reports a difference.
 #[ORM\Index(name: 'idx_document_failed', columns: ['status'], options: ['where' => "((status)::text = 'failed'::text)"])]
+// Reconciliation scans documents still waiting or running every minute: a small partial index keeps that cheap
+// however large the history grows, since finished documents (the vast majority) are not indexed.
+#[ORM\Index(name: 'idx_document_unfinished', columns: ['status'], options: ['where' => "((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]))"])]
 class Document
 {
     #[ORM\Id]
@@ -136,6 +140,16 @@ class Document
         $this->currentAttempt = $this->newAttempt();
     }
 
+    /**
+     * Records that the analysis message was sent. Not a timeline event: it is plumbing, not something that happened to the document.
+     */
+    public function markAnalysisQueued(bool $requeue = false): void
+    {
+        $this->assertStatus('markAnalysisQueued', DocumentStatus::Pending);
+
+        $this->getCurrentAttempt()->markQueued($requeue);
+    }
+
     public function startAnalysis(): AnalysisAttempt
     {
         $this->assertStatus('startAnalysis', DocumentStatus::Pending);
@@ -148,14 +162,22 @@ class Document
     }
 
     /**
-     * @param array<string, mixed> $result
+     * The period always comes from the analysis. The type is only filled in when the client left it blank:
+     * what the client declared wins over what the analysis detected.
      */
-    public function completeAnalysis(array $result): void
+    public function completeAnalysis(AnalysisResult $result): void
     {
         $this->assertStatus('completeAnalysis', DocumentStatus::Processing);
 
-        $this->getCurrentAttempt()->succeed($result);
+        if (null !== $result->periodStart && null !== $result->periodEnd && $result->periodEnd < $result->periodStart) {
+            throw new \InvalidArgumentException('The period end cannot precede its start.');
+        }
+
+        $this->getCurrentAttempt()->succeed($result->toArray());
         $this->status = DocumentStatus::Analyzed;
+        $this->periodStart = $result->periodStart;
+        $this->periodEnd = $result->periodEnd;
+        $this->type ??= $result->detectedType;
         $this->record(DocumentEventType::AnalysisSucceeded, $this->getCurrentAttempt());
     }
 
@@ -163,6 +185,23 @@ class Document
     {
         $this->assertStatus('failAnalysis', DocumentStatus::Processing);
 
+        $this->fail($reason);
+    }
+
+    /**
+     * Gives up on the current attempt from the outside (reconciliation): it may not have started, or never finished.
+     */
+    public function abandonAnalysis(FailureReason $reason): void
+    {
+        if (DocumentStatus::Pending !== $this->status) {
+            $this->assertStatus('abandonAnalysis', DocumentStatus::Processing);
+        }
+
+        $this->fail($reason);
+    }
+
+    private function fail(FailureReason $reason): void
+    {
         $this->getCurrentAttempt()->fail($reason);
         $this->status = DocumentStatus::Failed;
         $this->record(DocumentEventType::AnalysisFailed, $this->getCurrentAttempt(), payload: ['reason' => $reason->value]);
