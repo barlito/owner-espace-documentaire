@@ -13,6 +13,11 @@ x-php: &php
     environment:
         SERVER_NAME: ":80"
         TZ: Europe/Paris
+        # Dev-only key (the same value as .env): Caddy reads it for the Mercure hub, Symfony for its JWTs.
+        MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-dev-only-mercure-secret-change-me-in-production-0123456789}
+        # The browser reaches the hub on the application's own origin, whatever HTTP_PORT is.
+        MERCURE_PUBLIC_URL: http://localhost:${HTTP_PORT:-8000}/.well-known/mercure
+        MERCURE_CORS_ORIGINS: http://localhost:${HTTP_PORT:-8000}
     volumes:
         - ./:/app
         - ./.docker/franken/Caddyfile:/etc/caddy/Caddyfile:ro
