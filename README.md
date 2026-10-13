@@ -61,7 +61,8 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Commande | Rôle |
 | --- | --- |
 | `make help` | Liste toutes les commandes |
-| `make up` / `make down` | Démarre / arrête la stack |
+| `make up` / `make down` | Démarre / arrête la stack (dont le worker) |
+| `make worker.restart` / `make worker.logs` | Redémarre le worker (un process long ne recharge pas le code) / suit ses logs |
 | `make sh` | Shell dans le conteneur PHP |
 | `make test` | Recrée la base de test, valide le schéma Doctrine et lance PHPUnit |
 | `make lint` | Vérifie le style (PHP-CS-Fixer) et lance l'analyse statique (PHPStan) |
@@ -85,6 +86,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
 | Horloge | **`symfony/clock`** | Les entités lisent l'heure via `now()` : identique en production, mais les fixtures (et les tests) peuvent figer ou avancer l'horloge pour produire un historique daté de façon cohérente, sans setter ni réflexion. |
+| Messagerie | **Symfony Messenger** (transport Doctrine) + **Scheduler** | File d'analyse dans PostgreSQL, sans service supplémentaire. Voir « Analyse simulée ». |
 | Stockage | **Flysystem** (`league/flysystem-bundle`) | Les fichiers passent par une abstraction : disque local aujourd'hui (`var/storage/documents`, hors de `public/`), adaptateur mémoire en test, un bucket S3 demain sans toucher au code métier. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 
@@ -140,6 +142,80 @@ Chaque changement passe par une méthode de `Document` (`startAnalysis`, `comple
 - **Atomicité** : le fichier est écrit d'abord, puis le document est enregistré. Si l'écriture en base échoue, le fichier est supprimé (compensation) : il n'existe jamais de document sans fichier. Inversement, un arrêt brutal du processus entre les deux étapes peut laisser un fichier orphelin ; c'est acceptable pour un MVP et nettoyable plus tard par une commande qui compare le stockage à la base.
 - **Interface** : un envoi = une requête par fichier (progression par fichier, un refus n'empêche pas les autres), deux envois en parallèle. Sans JavaScript, le formulaire reste fonctionnel (`files[]` en une seule requête, `post_max_size = 100M`), et chaque fichier est traité indépendamment.
 - Les limites PHP sont dans `.docker/php/app.ini` (`upload_max_filesize = 20M`, `post_max_size = 100M`, `max_file_uploads = 20`).
+
+## Analyse simulée
+
+Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement), exécutée en asynchrone par un worker (`make up` le démarre ; `make worker.logs` pour le suivre).
+
+### Déroulé
+
+1. **Dépôt** : le document et le message `AnalyzeDocument` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
+2. **Démarrage** : le worker verrouille le document (`SELECT … FOR UPDATE`), le passe en « en cours » et décide du scénario. Il n'y a **aucun `sleep()`** : le temps de traitement simulé est le *délai* du message suivant, `CompleteAnalysis`, ce qui laisse le worker libre pour les autres documents.
+3. **Fin** : `CompleteAnalysis` enregistre le résultat (JSON : type détecté, période, résumé, champs, confiance) ou l'échec. Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse.
+
+Les doublons et messages tardifs sont sans effet : chaque message porte l'identifiant de la tentative, et le handler ignore le message si le document n'est plus dans l'état attendu.
+
+### Scénarios
+
+| Cas | Probabilité | Durée simulée |
+| --- | --- | --- |
+| Succès rapide | 75 % | 3 à 12 s |
+| Succès long | 10 % | 60 à 120 s |
+| Échec (fichier illisible, format non pris en charge, inconnu) | 15 % | 3 à 12 s |
+
+- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques.
+- **Relance** : une tentative n°2 ou plus réussit toujours, **sauf** si la précédente a échoué sur un fichier illisible (une relance ne répare pas un fichier).
+- L'échec « interrompu » n'est jamais tiré au sort : il est réservé à la réconciliation.
+
+### Réconciliation
+
+Un message peut se perdre (arrêt brutal, message mis en file d'échec après ses 3 reprises), un worker peut mourir en cours de traitement. Le Scheduler lance donc `ReconcileAnalyses` toutes les minutes (aussi disponible à la main : `make console c="app:analysis:reconcile"`) :
+
+- une tentative « en cours » depuis plus de `ANALYSIS_STALE_AFTER` secondes passe en échec « interrompu » ;
+- un document « en attente » jamais mis en file, ou dont le message date de plus de `ANALYSIS_REQUEUE_AFTER` secondes, est remis en file ; un document qui attend simplement son tour n'est donc pas renvoyé à chaque passage ;
+- après `ANALYSIS_MAX_REQUEUES` remises en file sans démarrage, la tentative est abandonnée (échec, cause inconnue) au lieu de boucler indéfiniment sur un message qui plante toujours ; un administrateur peut la relancer (nouvelle tentative, compteur à zéro) ;
+- au plus `ANALYSIS_RECONCILE_BATCH` documents par type et par passage, les plus anciens d'abord ; un index partiel (`idx_document_unfinished`) évite de parcourir tout l'historique.
+
+| Variable | Défaut | Rôle |
+| --- | --- | --- |
+| `ANALYSIS_RECONCILE_INTERVAL` | `1 minute` | Fréquence de la réconciliation |
+| `ANALYSIS_STALE_AFTER` | `600` | Secondes avant d'interrompre une analyse en cours. Doit dépasser la plus longue analyse simulée (120 s) : sinon le worker refuse de démarrer |
+| `ANALYSIS_REQUEUE_AFTER` | `300` | Secondes avant de remettre un message en file |
+| `ANALYSIS_MAX_REQUEUES` | `3` | Remises en file avant abandon |
+| `ANALYSIS_RECONCILE_BATCH` | `100` | Documents traités par type et par passage |
+
+Reprises techniques : les exceptions (base indisponible…) sont rejouées 3 fois avec un délai croissant, puis le message part en file `failed` (`messenger:failed:show`). Ce n'est pas le cas des échecs simulés, qui sont des résultats métier.
+
+### Pourquoi le transport Doctrine
+
+- **Une stack plus simple** : la file est une table PostgreSQL, pas de broker à déployer ni à superviser ; le worker écoute les nouveaux messages via `LISTEN/NOTIFY` (pas de polling).
+- **Envoi atomique avec l'écriture en base** : le transport utilise la même connexion que l'ORM, donc le document et son message (ou, dans un handler, la mise à jour et les messages suivants) sont validés ou annulés ensemble, sans pattern outbox.
+- Le prix : la file partage la base et ne passe pas à l'échelle d'un vrai broker. Nous restons sur Doctrine pour la simplicité de la stack.
+
+La table `messenger_messages` est créée par une migration (`auto_setup=0`) et ignorée par la validation du schéma (`schema_filter`).
+
+### Passer à RabbitMQ
+
+1. `composer require symfony/amqp-messenger` ; dans le `Dockerfile`, ajouter `amqp` à la liste `install-php-extensions`.
+2. Un service dans `compose.yaml` (et `depends_on` sur `rabbitmq` pour `worker`) :
+
+```yaml
+rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+        - "15672:15672" # interface d'administration
+    healthcheck:
+        test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 10
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+```
+
+3. `MESSENGER_TRANSPORT_DSN=amqp://guest:guest@rabbitmq:5672/%2f/messages`. Garder `failed` sur Doctrine (`doctrine://default?queue_name=failed&auto_setup=0`) ou l'adapter de même.
+
+(Déclarer aussi le volume `rabbitmq_data`.) Ce qu'on perd : l'envoi n'est **plus atomique** avec l'écriture en base (un crash entre le commit et la publication perd le message ; l'inverse, publier avant un commit qui échoue, est géré par les handlers qui ignorent ce qu'ils ne reconnaissent pas). Il faut soit un pattern outbox, soit accepter la réconciliation comme filet de sécurité : elle remet déjà en file les documents jamais pris en charge, c'est donc suffisant ici.
 
 ## Direction artistique
 
