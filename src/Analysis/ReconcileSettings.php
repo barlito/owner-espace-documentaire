@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Analysis;
 
+use App\Analysis\Simulation\AnalysisSimulator;
+
 /**
  * Reconciliation thresholds, from the environment (see .env).
  * Built when the worker boots (the schedule needs the interval), so a bad configuration stops it right away.

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Analysis;
 
-use App\Analysis\AnalysisSimulator;
 use App\Analysis\AnalyzeDocument;
 use App\Analysis\AnalyzeDocumentHandler;
 use App\Analysis\CompleteAnalysis;
 use App\Analysis\CompleteAnalysisHandler;
 use App\Analysis\ReconcileAnalyses;
 use App\Analysis\ReconcileAnalysesHandler;
+use App\Analysis\Simulation\AnalysisSimulator;
 use App\Entity\Document;
 use App\Enum\AttemptStatus;
 use App\Enum\DocumentEventType;

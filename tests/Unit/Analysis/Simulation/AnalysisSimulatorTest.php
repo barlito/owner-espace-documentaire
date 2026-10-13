@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Analysis;
+namespace App\Tests\Unit\Analysis\Simulation;
 
-use App\Analysis\AnalysisSimulator;
+use App\Analysis\Simulation\AnalysisSimulator;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;

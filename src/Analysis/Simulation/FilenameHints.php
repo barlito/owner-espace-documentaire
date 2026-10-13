@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Analysis\Simulation;
 
 use App\Enum\DocumentType;
 

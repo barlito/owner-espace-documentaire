@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Analysis\Simulation;
 
+use App\Analysis\AnalysisResult;
 use App\Entity\Document;
 use App\Enum\DocumentFamily;
 use App\Enum\DocumentType;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Analysis;
+namespace App\Tests\Unit\Analysis\Simulation;
 
-use App\Analysis\FilenameHints;
+use App\Analysis\Simulation\FilenameHints;
 use App\Enum\DocumentType;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
-use App\Analysis\AnalysisSimulator;
+use App\Analysis\Simulation\AnalysisSimulator;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;

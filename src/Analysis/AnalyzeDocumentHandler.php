@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Analysis;
 
+use App\Analysis\Simulation\AnalysisSimulator;
 use App\Enum\DocumentStatus;
 use App\Repository\DocumentRepository;
 use Psr\Log\LoggerInterface;
