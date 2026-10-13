@@ -54,7 +54,7 @@ final class ClientTimelinePresenterTest extends TestCase
         }
     }
 
-    public function testARetryIsAttributedToTheTeamNeverToTheAdministrator(): void
+    public function testARetryNamesTheAdministratorAsPartOfTheOwnerTeam(): void
     {
         $document = $this->document();
         $document->startAnalysis('ref-1');
@@ -65,13 +65,12 @@ final class ClientTimelinePresenterTest extends TestCase
         $entries = new ClientTimelinePresenter()->present($document);
 
         $this->assertSame(
-            ['Pièce reçue', 'Analyse démarrée', 'Échec de l\'analyse', 'Analyse relancée par l\'équipe OWNER', 'Analyse démarrée'],
+            ['Pièce reçue', 'Analyse démarrée', 'Échec de l\'analyse', 'Analyse relancée par Sophie Laurent (équipe OWNER)', 'Analyse démarrée'],
             array_column($this->rows($entries), 'label'),
         );
         $this->assertSame('Tentative n° 2', $entries[4]->detail);
         foreach ($entries as $entry) {
-            $this->assertStringNotContainsString('Sophie', $entry->label . $entry->detail);
-            $this->assertStringNotContainsString('Laurent', $entry->label . $entry->detail);
+            $this->assertStringNotContainsString('interrupted', $entry->label . $entry->detail);
         }
     }
 

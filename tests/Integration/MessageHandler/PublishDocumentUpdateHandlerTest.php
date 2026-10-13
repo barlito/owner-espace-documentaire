@@ -88,7 +88,7 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $this->assertStringNotContainsString("data-live-scope='admin-todo'", $data, 'Ordinary traffic is not announced on the supervision page.');
     }
 
-    public function testARetryIsAnnouncedOnTheSupervisionPageAndNamesTheAdministratorToTheTeamOnly(): void
+    public function testARetryIsAnnouncedOnTheSupervisionPageAndNamesTheAdministratorOnBothSides(): void
     {
         $document = $this->createDocument('Bulletin-mars.pdf');
         $this->asWorker(function () use ($document): void {
@@ -108,8 +108,7 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $this->assertStringContainsString("targets=\"#live-status[data-live-scope='admin-todo']\"", $admin);
         $this->assertStringContainsString('Bulletin-mars.pdf : analyse relancée.', $admin);
         $this->assertStringContainsString('Analyse relancée par Sophie Laurent (tentative n° 2)', $admin);
-        $this->assertStringNotContainsString('Sophie', $client);
-        $this->assertStringContainsString('Analyse relancée par l&#039;équipe OWNER', $client);
+        $this->assertStringContainsString('Analyse relancée par Sophie Laurent (équipe OWNER)', $client);
     }
 
     public function testACreatedDocumentOnlyRefreshesTheCountsForTheBackOffice(): void

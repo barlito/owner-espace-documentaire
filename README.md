@@ -86,7 +86,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
 
    Un `.txt` est refusé avec sa raison. Les statuts évoluent sans recharger, sur la page de dépôt comme dans le dossier.
 3. **Côté administrateur — Sophie** (`admin@owner.test`) : la Supervision liste les échecs de tous les clients. Ouvrez celui déposé à l'étape 2, consultez les tentatives et l'historique technique, cliquez **Relancer** (un double clic ne crée qu'une tentative) et suivez la nouvelle issue en direct.
-4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance « par l'équipe OWNER ».
+4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance, avec le nom de l'administratrice.
 5. **Isolation** : connecté en Claire (`claire@lespetitspas.test`), l'URL d'une pièce de Paul répond 404.
 6. **Volume** : `make fixtures.volume` ajoute ~5 200 pièces, dont un client de 3 000 (`contact@groupe-delmas-restauration.test`, même mot de passe).
 
@@ -98,7 +98,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
 - **La nature est facultative au dépôt**, la période ne se saisit pas : l'analyse (simulée) les complète. Ce que le client a choisi prime sur ce que l'analyse détecte. Une pièce « Autre » ne reçoit une période que si son nom contient une date : une période absente vaut mieux qu'une période inventée.
 - **Formats retenus** : PDF, JPEG, PNG, HEIC (photos de téléphone), Word et Excel ; 20 Mo par fichier, 20 fichiers par envoi. Le type est détecté côté serveur, à partir du contenu.
 - **L'analyse démarre automatiquement** après le dépôt ; elle est simulée mais suit le fonctionnement d'un vrai fournisseur asynchrone (soumission, référence, interrogation du résultat).
-- **Le client voit « l'équipe OWNER » comme auteur d'une relance**, sans le nom de la personne ni la raison technique ; l'administrateur voit les deux. C'est un choix de ton et de confidentialité ; afficher le prénom côté client serait une ligne dans `ClientTimelinePresenter`.
+- **Le client voit qui a relancé son analyse** (« Analyse relancée par Sophie Laurent (équipe OWNER) »), comme le demande le cahier des charges pour l'auteur d'une intervention, mais jamais la raison technique ni les codes, réservés à l'administrateur.
 - Les comptes de démonstration sont préparés (pas d'inscription ni de mot de passe oublié, conformément au sujet).
 
 ### Choix de conception
@@ -424,7 +424,7 @@ Un clic ou dix produisent donc une tentative et un message. La base garde le der
 
 ### Historique : ce que voit l'administrateur, ce que voit le client
 
-Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par l'équipe OWNER », causes en langage courant, jamais de nom ni de code), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
+Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par Sophie Laurent (équipe OWNER) » : l'auteur de l'intervention est nommé, mais les causes sont en langage courant, jamais de code ni de numéro de tentative technique), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
 
 ### Temps réel côté admin
 
@@ -459,7 +459,7 @@ Le client ouvre une pièce depuis « Mon dossier » (le nom du fichier est un li
 
 **En-têtes de l'aperçu.** Le `Caddyfile` interdit par défaut tout cadrage (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) ; l'aperçu les remplace (le `?` du Caddyfile laisse la valeur de l'application l'emporter) par `X-Frame-Options: SAMEORIGIN` et `frame-ancestors 'self'` : seules nos pages peuvent l'afficher dans un `<iframe>`. Les images ajoutent `sandbox` (aucun script, origine opaque). Le PDF n'a pas `sandbox` : le lecteur PDF intégré aux navigateurs peut refuser de s'afficher dans une iframe sandboxée (Chromium l'accepte, ce n'est pas garanti ailleurs) ; le fichier n'est de toute façon jamais interprété comme du HTML, puisque le type est détecté côté serveur et que `nosniff` interdit au navigateur d'en deviner un autre. Sur mobile, l'aperçu PDF n'est pas intégré : un bouton l'ouvre dans le lecteur du navigateur.
 
-**Historique.** Il est présenté du plus ancien au plus récent : il se lit comme une histoire, et une nouvelle étape arrive en bas. Les événements ne stockent que des codes ; `App\DocumentPage\ClientTimelinePresenter` en produit le texte pour le client (« Pièce reçue », « Analyse démarrée », « Analyse terminée », « Échec de l'analyse » avec une cause en langage courant, « Analyse relancée par l'équipe OWNER »). Le client ne voit **jamais** le nom de l'administrateur ni de cause technique. La variante admin (cause technique, nom de l'administrateur) sera une autre classe produisant les mêmes `TimelineEntry`.
+**Historique.** Il est présenté du plus ancien au plus récent : il se lit comme une histoire, et une nouvelle étape arrive en bas. Les événements ne stockent que des codes ; `App\DocumentPage\ClientTimelinePresenter` en produit le texte pour le client (« Pièce reçue », « Analyse démarrée », « Analyse terminée », « Échec de l'analyse » avec une cause en langage courant, « Analyse relancée par Sophie Laurent (équipe OWNER) »). Le client voit qui est intervenu, mais **jamais** de cause technique ni de code. La variante admin (`AdminTimelinePresenter` : cause technique, numéros de tentative) produit les mêmes `TimelineEntry`.
 
 ## Direction artistique
 

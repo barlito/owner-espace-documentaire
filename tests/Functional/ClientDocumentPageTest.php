@@ -197,8 +197,7 @@ final class ClientDocumentPageTest extends WebTestCase
         $status = $crawler->filter('#document-page-status-' . $document->getId());
         $this->assertStringContainsString('relancé l\'analyse de cette pièce (tentative n° 2)', $status->text());
         $labels = $crawler->filter('#document-page-timeline-' . $document->getId() . ' ol > li p.font-medium')->each(static fn (Crawler $node): string => $node->text());
-        $this->assertSame(['Pièce reçue', 'Analyse démarrée', 'Échec de l\'analyse', 'Analyse relancée par l\'équipe OWNER'], $labels);
-        $this->assertStringNotContainsString('Sophie Laurent', (string) $this->browser->getResponse()->getContent());
+        $this->assertSame(['Pièce reçue', 'Analyse démarrée', 'Échec de l\'analyse', 'Analyse relancée par Sophie Laurent (équipe OWNER)'], $labels);
         $this->assertStringNotContainsString('admin@owner.test', (string) $this->browser->getResponse()->getContent());
     }
 
