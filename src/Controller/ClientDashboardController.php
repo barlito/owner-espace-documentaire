@@ -26,6 +26,7 @@ use function Symfony\Component\Clock\now;
 final class ClientDashboardController extends AbstractController
 {
     private const int PER_PAGE = 25;
+    private const int PERIOD_MONTHS = 36;
 
     #[Route('/espace', name: 'client_dashboard')]
     public function __invoke(#[CurrentUser] User $user, Request $request, DocumentRepository $documents): Response
@@ -45,7 +46,7 @@ final class ClientDashboardController extends AbstractController
             // Whatever the filters, a client without any document sees the invitation to upload.
             'folderEmpty' => 0 === array_sum(array_column($statusCounts, 'count')),
             'typeGroups' => DocumentType::groupedByFamily(),
-            'periods' => PeriodFilter::suggestions(now(), $filters->period),
+            'periods' => PeriodFilter::suggestions(now(), $filters->period, $documents->periodMonthsForClient($client, self::PERIOD_MONTHS)),
         ]);
     }
 }

@@ -52,22 +52,30 @@ final class PeriodFilterTest extends TestCase
         yield 'trailing newline' => ["2026\n"];
     }
 
-    public function testSuggestionsListRecentYearsAndMonthsMostRecentFirst(): void
+    public function testSuggestionsListRecentYearsAndTheAvailableMonthsGroupedByYear(): void
     {
-        $suggestions = PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), null);
+        $suggestions = PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), null, ['2026-03', '2025-08', '2026-10', '2025-12']);
 
-        $this->assertSame(['2026', '2025', '2024', '2023', '2022'], array_column(array_map(static fn (PeriodFilter $p): array => ['v' => $p->value], $suggestions['years']), 'v'));
-        $this->assertCount(12, $suggestions['months']);
-        $this->assertSame('2026-10', $suggestions['months'][0]->value);
-        $this->assertSame('2025-11', $suggestions['months'][11]->value);
+        $this->assertSame(['2026', '2025', '2024', '2023', '2022'], array_map(static fn (PeriodFilter $p): string => $p->value, $suggestions['years']));
+        $this->assertSame(['2026', '2025'], array_column($suggestions['monthGroups'], 'year'));
+        $this->assertSame(['2026-10', '2026-03'], array_map(static fn (PeriodFilter $p): string => $p->value, $suggestions['monthGroups'][0]['months']));
+        $this->assertSame(['2025-12', '2025-08'], array_map(static fn (PeriodFilter $p): string => $p->value, $suggestions['monthGroups'][1]['months']));
+    }
+
+    public function testWithoutAnyDocumentNoMonthIsOffered(): void
+    {
+        $this->assertSame([], PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), null)['monthGroups']);
     }
 
     public function testAnActivePeriodOutsideTheSuggestionsIsKept(): void
     {
-        $suggestions = PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), PeriodFilter::parse('2019-04'));
+        $month = PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), PeriodFilter::parse('2019-04'), ['2026-10']);
+        $this->assertSame(['2026', '2019'], array_column($month['monthGroups'], 'year'));
+        $this->assertSame('2019-04', $month['monthGroups'][1]['months'][0]->value);
 
-        $this->assertSame('2019-04', $suggestions['months'][12]->value);
-        $this->assertCount(5, $suggestions['years']);
+        $year = PeriodFilter::suggestions(new \DateTimeImmutable('2026-10-13'), PeriodFilter::parse('2019'));
+        $this->assertCount(6, $year['years']);
+        $this->assertSame('2019', $year['years'][5]->value);
     }
 
     #[DataProvider('labels')]

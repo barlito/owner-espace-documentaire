@@ -11,6 +11,7 @@ use App\Entity\Document;
 use App\Enum\DocumentStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -97,6 +98,24 @@ class DocumentRepository extends ServiceEntityRepository
             static fn (DocumentStatus $status): array => ['status' => $status, 'count' => $counts[$status->value] ?? 0],
             DocumentStatus::cases(),
         );
+    }
+
+    /**
+     * The most recent months ("YYYY-MM", most recent first) in which one of the client's documents starts: the
+     * months worth offering in the period filter.
+     *
+     * @return list<string>
+     */
+    public function periodMonthsForClient(Client $client, int $limit): array
+    {
+        /** @var list<string> $months */
+        $months = $this->getEntityManager()->getConnection()->fetchFirstColumn(
+            "SELECT DISTINCT to_char(period_start, 'YYYY-MM') AS month FROM document WHERE client_id = :client AND period_start IS NOT NULL ORDER BY month DESC LIMIT :limit",
+            ['client' => $client->getId()->toRfc4122(), 'limit' => $limit],
+            ['limit' => ParameterType::INTEGER],
+        );
+
+        return $months;
     }
 
     /**
