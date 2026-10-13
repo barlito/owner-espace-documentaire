@@ -86,7 +86,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
 
    Un `.txt` est refusé avec sa raison. Les statuts évoluent sans recharger, sur la page de dépôt comme dans le dossier.
 3. **Côté administrateur — Sophie** (`admin@owner.test`) : la Supervision liste les échecs de tous les clients. Ouvrez celui déposé à l'étape 2, consultez les tentatives et l'historique technique, cliquez **Relancer** (un double clic ne crée qu'une tentative) et suivez la nouvelle issue en direct.
-4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance « par l'équipe OWNER ».
+4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance, avec le nom de l'administratrice.
 5. **Isolation** : connecté en Claire (`claire@lespetitspas.test`), l'URL d'une pièce de Paul répond 404.
 6. **Volume** : `make fixtures.volume` ajoute ~5 200 pièces, dont un client de 3 000 (`contact@groupe-delmas-restauration.test`, même mot de passe).
 
@@ -98,7 +98,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
 - **La nature est facultative au dépôt**, la période ne se saisit pas : l'analyse (simulée) les complète. Ce que le client a choisi prime sur ce que l'analyse détecte. Une pièce « Autre » ne reçoit une période que si son nom contient une date : une période absente vaut mieux qu'une période inventée.
 - **Formats retenus** : PDF, JPEG, PNG, HEIC (photos de téléphone), Word et Excel ; 20 Mo par fichier, 20 fichiers par envoi. Le type est détecté côté serveur, à partir du contenu.
 - **L'analyse démarre automatiquement** après le dépôt ; elle est simulée mais suit le fonctionnement d'un vrai fournisseur asynchrone (soumission, référence, interrogation du résultat).
-- **Le client voit « l'équipe OWNER » comme auteur d'une relance**, sans le nom de la personne ni la raison technique ; l'administrateur voit les deux. C'est un choix de ton et de confidentialité ; afficher le prénom côté client serait une ligne dans `ClientTimelinePresenter`.
+- **Le client voit qui a relancé son analyse** (« Analyse relancée par Sophie Laurent (équipe OWNER) »), comme le demande le cahier des charges pour l'auteur d'une intervention, mais jamais la raison technique ni les codes, réservés à l'administrateur.
 - Les comptes de démonstration sont préparés (pas d'inscription ni de mot de passe oublié, conformément au sujet).
 
 ### Choix de conception
