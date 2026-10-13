@@ -289,6 +289,20 @@ class Document
         return $this->uploadedAt;
     }
 
+    /**
+     * Author of the first timeline event: the account that submitted the file.
+     */
+    public function getUploader(): ?User
+    {
+        foreach ($this->events as $event) {
+            if (DocumentEventType::DocumentReceived === $event->getType()) {
+                return $event->getActor();
+            }
+        }
+
+        return null;
+    }
+
     public function getCurrentAttempt(): AnalysisAttempt
     {
         return $this->currentAttempt ?? throw new \LogicException('A document always has a current attempt once constructed.');

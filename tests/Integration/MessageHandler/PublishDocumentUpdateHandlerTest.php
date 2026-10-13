@@ -35,7 +35,7 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $data = $updates[0]->getData();
         $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="document-%s">', $id), $data);
         $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="upload-status-%s">', $id), $data);
-        $this->assertStringContainsString('<turbo-stream action="update" target="live-status">', $data);
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="update" targets="#live-status[data-live-scope=\'documents\'], #live-status[data-live-scope=\'document-%s\']">', $id), $data);
         $this->assertStringContainsString('Bulletin-mars.pdf : analyse en attente.', $data);
         $this->assertStringNotContainsString('action="prepend"', $data);
     }

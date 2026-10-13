@@ -39,8 +39,9 @@
                 {% block body %}{% endblock %}
             </main>
 
-            {# The page's only live region: announcements (live document updates, upload progress) are written here. #}
-            <p id="live-status" class="sr-only" role="status" aria-live="polite"></p>
+            {# The page's only live region: announcements (live document updates, upload progress) are written here.
+               Its scope tells which live document announcements concern this page (see realtime/document_streams). #}
+            <p id="live-status" class="sr-only" role="status" aria-live="polite" data-live-scope="{% block live_scope %}documents{% endblock %}"></p>
         {% endblock %}
     </body>
 </html>

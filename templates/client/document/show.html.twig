@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ document.originalFilename }}{% endblock %}
+
+{% block live_scope %}document-{{ document.id }}{% endblock %}
+
+{% block body %}
+    <a href="{{ path('client_dashboard') }}" data-controller="back-to-list" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-navy-200 hover:text-navy-500">
+        {{ ux_icon('lucide:arrow-left', {class: 'size-4'}) }}
+        Retour à mon dossier
+    </a>
+
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 flex-1 basis-72">
+            <h1 class="break-words text-2xl sm:text-3xl">{{ document.originalFilename }}</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ document.size|file_size }}
+                · Déposée le {{ document.uploadedAt|date('d/m/Y \\à H:i') }}
+                {% if document.uploader %}· par {{ document.uploader.fullName }}{% endif %}
+            </p>
+        </div>
+        <twig:Button href="{{ path('client_document_file', {id: document.id}) }}" icon="lucide:download">Télécharger</twig:Button>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div class="space-y-6">
+            {{ include('client/document/_status.html.twig') }}
+            {{ include('client/document/_preview.html.twig') }}
+        </div>
+        <div>
+            {{ include('client/document/_timeline.html.twig') }}
+        </div>
+    </div>
+
+    {# Live updates: #document-page-status-{id} and #document-page-timeline-{id} are replaced by
+       realtime/document_streams.stream.html.twig. #}
+    {{ include('realtime/_client_stream.html.twig') }}
+{% endblock %}
