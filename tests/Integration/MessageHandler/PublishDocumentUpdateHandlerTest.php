@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\MessageHandler;
 
+use App\Entity\User;
+use App\Enum\FailureReason;
 use App\Message\PublishDocumentUpdate;
 use App\MessageHandler\PublishDocumentUpdateHandler;
 use App\Realtime\DocumentStreamRenderer;
@@ -27,7 +29,7 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $this->handle(new PublishDocumentUpdate($document->getId()));
 
         $updates = $this->published();
-        $this->assertCount(1, $updates);
+        $this->assertCount(2, $updates, 'One update for the client, one for the back office.');
         $this->assertSame([Topics::client($document->getClient()->getId())], $updates[0]->getTopics());
         $this->assertTrue($updates[0]->isPrivate());
 
@@ -38,6 +40,87 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $this->assertStringContainsString(\sprintf('<turbo-stream action="update" targets="#live-status[data-live-scope=\'documents\'], #live-status[data-live-scope=\'document-%s\']">', $id), $data);
         $this->assertStringContainsString('Bulletin-mars.pdf : analyse en attente.', $data);
         $this->assertStringNotContainsString('action="prepend"', $data);
+        $this->assertStringNotContainsString('admin-', $data, 'The client payload knows nothing of the back office.');
+    }
+
+    public function testTheBackOfficeGetsItsOwnPrivateUpdateOnTheAdminTopic(): void
+    {
+        $document = $this->createDocument('Bulletin-mars.pdf');
+        $this->asWorker(function () use ($document): void {
+            $managed = $this->em->find($document::class, $document->getId()) ?? throw new \LogicException('Document not found.');
+            $managed->startAnalysis('ref');
+            $managed->failAnalysis(FailureReason::UnreadableFile);
+        });
+
+        $this->handle(new PublishDocumentUpdate($document->getId()));
+
+        $updates = $this->published();
+        $this->assertSame([Topics::admin()], $updates[1]->getTopics());
+        $this->assertTrue($updates[1]->isPrivate());
+        $id = $document->getId()->toRfc4122();
+        $data = $updates[1]->getData();
+        $this->assertStringContainsString('<turbo-stream action="replace" target="admin-kpis">', $data);
+        $this->assertStringContainsString('id="admin-kpis"', $data);
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-status-%s">', $id), $data);
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-attempts-%s">', $id), $data);
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-timeline-%s">', $id), $data);
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-actions-%s">', $id), $data);
+        $this->assertStringContainsString(\sprintf('src="/admin/pieces/%s/actions"', $id), $data, 'The retry button is fetched by the viewer: it needs their CSRF token.');
+        $this->assertStringContainsString('unreadable_file', $data);
+        $this->assertStringNotContainsString('csrf', strtolower($data));
+        // Failed: the list is not reordered under the cursor, the administrator is told instead.
+        $this->assertStringContainsString('<turbo-stream action="update" target="admin-todo-notice">', $data);
+        $this->assertStringNotContainsString(\sprintf('action="remove" target="admin-todo-%s"', $id), $data);
+        $this->assertStringContainsString("targets=\"#live-status[data-live-scope='admin-todo']\"", $data);
+        $this->assertStringContainsString('Bulletin-mars.pdf : échec de l&#039;analyse', $data);
+        $this->assertStringContainsString(\sprintf("targets=\"#live-status[data-live-scope='document-%s']\"", $id), $data);
+    }
+
+    public function testADocumentNoLongerFailedLeavesTheToDoListWithoutNotice(): void
+    {
+        $document = $this->createDocument('Bulletin-mars.pdf');
+
+        $this->handle(new PublishDocumentUpdate($document->getId()));
+
+        $data = $this->published()[1]->getData();
+        $this->assertStringContainsString(\sprintf('<turbo-stream action="remove" target="admin-todo-%s"></turbo-stream>', $document->getId()->toRfc4122()), $data);
+        $this->assertStringNotContainsString('admin-todo-notice', $data);
+        $this->assertStringNotContainsString("data-live-scope='admin-todo'", $data, 'Ordinary traffic is not announced on the supervision page.');
+    }
+
+    public function testARetryIsAnnouncedOnTheSupervisionPageAndNamesTheAdministratorToTheTeamOnly(): void
+    {
+        $document = $this->createDocument('Bulletin-mars.pdf');
+        $this->asWorker(function () use ($document): void {
+            $managed = $this->em->find($document::class, $document->getId()) ?? throw new \LogicException('Document not found.');
+            $managed->startAnalysis('ref');
+            $managed->failAnalysis(FailureReason::Interrupted);
+            // Flushed apart, as in real life: a document never has two unfinished attempts at once.
+            $this->em->flush();
+            $admin = User::admin('sophie@owner.test', 'Sophie Laurent');
+            $this->em->persist($admin);
+            $managed->retryAnalysis($admin);
+        });
+
+        $this->handle(new PublishDocumentUpdate($document->getId()));
+
+        [$client, $admin] = array_map(static fn (Update $update): string => $update->getData(), $this->published());
+        $this->assertStringContainsString("targets=\"#live-status[data-live-scope='admin-todo']\"", $admin);
+        $this->assertStringContainsString('Bulletin-mars.pdf : analyse relancée.', $admin);
+        $this->assertStringContainsString('Analyse relancée par Sophie Laurent (tentative n° 2)', $admin);
+        $this->assertStringNotContainsString('Sophie', $client);
+        $this->assertStringContainsString('Analyse relancée par l&#039;équipe OWNER', $client);
+    }
+
+    public function testACreatedDocumentOnlyRefreshesTheCountsForTheBackOffice(): void
+    {
+        $document = $this->createDocument();
+
+        $this->handle(new PublishDocumentUpdate($document->getId(), created: true));
+
+        $data = $this->published()[1]->getData();
+        $this->assertStringContainsString('target="admin-kpis"', $data);
+        $this->assertStringNotContainsString('admin-document-', $data);
     }
 
     public function testANewDocumentIsPrependedWithoutEverDuplicatingARow(): void
