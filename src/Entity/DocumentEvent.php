@@ -11,6 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+use function Symfony\Component\Clock\now;
+
 /**
  * Dated entry of a document timeline. Append-only: read-only for Doctrine and without setters.
  */
@@ -70,7 +72,7 @@ class DocumentEvent
         $this->type = $type;
         $this->actor = $actor;
         $this->payload = $payload;
-        $this->occurredAt = new \DateTimeImmutable();
+        $this->occurredAt = now();
     }
 
     public function getId(): Uuid

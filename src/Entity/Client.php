@@ -10,6 +10,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+use function Symfony\Component\Clock\now;
+
 /**
  * Company supported by OWNER. Its document folder is the set of its documents.
  *
@@ -33,7 +35,7 @@ class Client
     {
         $this->id = Uuid::v7();
         $this->name = $name;
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = now();
     }
 
     public function getId(): Uuid
