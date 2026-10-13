@@ -87,15 +87,54 @@ final class RealtimeTest extends WebTestCase
         $this->assertNotSame(Topics::client($this->clientId($paul)), $this->subscriptionClaims()['mercure']['subscribe'][0]);
     }
 
-    public function testTheAdminAreaGrantsNoClientTopic(): void
+    public function testAdminPagesListenToTheAdminTopicOnlyAndGrantNoClientTopic(): void
     {
+        $paul = $this->createClientUser();
+        $document = $this->createDocumentFor($paul, 'Bilan.pdf');
         $this->browser->loginUser($this->createAdmin());
 
-        $crawler = $this->browser->request('GET', '/admin');
+        foreach (['/admin', '/admin/pieces/' . $document->getId()->toRfc4122()] as $path) {
+            $crawler = $this->browser->request('GET', $path);
 
-        $this->assertResponseIsSuccessful();
-        $this->assertCount(0, $crawler->filter('turbo-mercure-stream-source'));
-        $this->assertNull($this->authorizationCookie());
+            $this->assertResponseIsSuccessful();
+            $source = $crawler->filter('turbo-mercure-stream-source[private]');
+            $this->assertCount(1, $source, $path);
+            parse_str((string) parse_url((string) $source->attr('src'), \PHP_URL_QUERY), $params);
+            $this->assertSame(Topics::admin(), $params['topic'] ?? null, $path);
+            $this->assertSame([Topics::admin()], $this->subscriptionClaims()['mercure']['subscribe'], $path);
+            $this->assertArrayNotHasKey('publish', $this->subscriptionClaims()['mercure']);
+            $this->assertCount(1, $crawler->filter('[aria-live]'), $path);
+        }
+    }
+
+    public function testBackOfficePagesWithNothingLiveGrantNoSubscription(): void
+    {
+        $paul = $this->createClientUser();
+        $this->browser->loginUser($this->createAdmin());
+
+        foreach (['/admin/clients', '/admin/clients/' . $paul->getClient()?->getId()] as $path) {
+            $crawler = $this->browser->request('GET', $path);
+
+            $this->assertResponseIsSuccessful();
+            $this->assertCount(0, $crawler->filter('turbo-mercure-stream-source'), $path);
+            $this->assertNull($this->authorizationCookie(), $path);
+        }
+    }
+
+    public function testNoClientPageEverGetsTheAdminTopic(): void
+    {
+        $paul = $this->createClientUser();
+        $document = $this->createDocumentFor($paul, 'Bilan.pdf');
+        $this->browser->loginUser($paul);
+
+        foreach (['/espace', '/espace/depot', '/espace/pieces/' . $document->getId()->toRfc4122()] as $path) {
+            $crawler = $this->browser->request('GET', $path);
+
+            $this->assertResponseIsSuccessful();
+            $this->assertStringNotContainsString(rawurlencode(Topics::admin()), (string) $crawler->html(), $path);
+            $this->assertNotContains(Topics::admin(), $this->subscriptionClaims()['mercure']['subscribe'], $path);
+            $this->assertSame([Topics::client($this->clientId($paul))], $this->subscriptionClaims()['mercure']['subscribe'], $path);
+        }
     }
 
     public function testTheUploadResponseCarriesTheStatusMarkupLiveUpdatesReplace(): void

@@ -1,0 +1,51 @@
+{# Content of the results frame of the clients page. #}
+{% set total = page.total %}
+
+<div data-announcement="{{ total == 0 ? 'Aucun client ne correspond.' : total ~ (total > 1 ? ' clients' : ' client') ~ (search ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+    {% if search %}
+        {{ include('admin/_filter_chips.html.twig', {
+            chips: [{href: path('admin_clients'), label: 'Nom : « ' ~ search ~ ' »', name: 'Nom du client'}],
+            clear_href: path('admin_clients'),
+        }) }}
+    {% endif %}
+
+    {% if total == 0 %}
+        <twig:Card>
+            <twig:EmptyState
+                icon="{{ search ? 'lucide:search-x' : 'lucide:building-2' }}"
+                title="{{ search ? 'Aucun client ne correspond à votre recherche' : 'Aucun client pour le moment' }}"
+            >
+                {% if search %}
+                    <twig:Button variant="secondary" href="{{ path('admin_clients') }}" data-turbo-frame="_top">Effacer la recherche</twig:Button>
+                {% endif %}
+            </twig:EmptyState>
+        </twig:Card>
+    {% else %}
+        <twig:Card :padded="false">
+            <ul class="divide-y divide-gray-50">
+                {% for overview in page.items %}
+                    {% set failed = overview.count(constant('App\\Enum\\DocumentStatus::Failed')) %}
+                    <li class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-4 sm:px-6">
+                        <div class="min-w-0 flex-1 basis-56">
+                            <p class="truncate font-semibold text-navy-500" title="{{ overview.client.name }}">
+                                <a href="{{ path('admin_client_show', {id: overview.client.id}) }}" data-turbo-frame="_top" class="hover:underline">{{ overview.client.name }}</a>
+                            </p>
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                {% if overview.total == 0 %}Aucun document{% else %}{{ overview.total }} {{ overview.total > 1 ? 'documents' : 'document' }}{% endif %}
+                            </p>
+                        </div>
+                        {# Only the statuses the client has documents in: a row of zeros says nothing. #}
+                        <ul class="flex flex-wrap gap-2" aria-label="Documents par statut">
+                            {% for status in [constant('App\\Enum\\DocumentStatus::Failed'), constant('App\\Enum\\DocumentStatus::Pending'), constant('App\\Enum\\DocumentStatus::Processing'), constant('App\\Enum\\DocumentStatus::Analyzed')] %}
+                                {% if overview.count(status) > 0 %}
+                                    <li><twig:Badge variant="{{ status.badgeVariant }}" icon="{{ status.icon }}">{{ overview.count(status) }} · {{ status.label }}</twig:Badge></li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+            </ul>
+            {{ include('admin/_pager.html.twig', {list_route: 'admin_clients', list_params: {}, query: search ? {q: search} : {}, noun: 'clients'}) }}
+        </twig:Card>
+    {% endif %}
+</div>

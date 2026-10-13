@@ -1,0 +1,71 @@
+{# Status and analysis of a document for the OWNER team, replaced as a whole by the live updates. Rendered by the page
+   and by the worker: it must not use the request nor the logged-in user. #}
+{% set status = document.status %}
+{% set attempt = document.currentAttempt %}
+<section id="admin-document-status-{{ document.id }}" aria-labelledby="admin-document-analysis-title-{{ document.id }}">
+    <twig:Card>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="admin-document-analysis-title-{{ document.id }}" class="text-lg">Analyse</h2>
+            <twig:Badge variant="{{ status.badgeVariant }}" icon="{{ status.icon }}">{{ status.label }}</twig:Badge>
+        </div>
+
+        <dl class="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+            <div>
+                <dt class="text-gray-500">Nature</dt>
+                <dd class="mt-0.5 font-medium text-navy-500">{{ document.type ? document.type.label : 'Non catégorisée' }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Période</dt>
+                <dd class="mt-0.5 font-medium text-navy-500">{{ period_label(document.periodStart, document.periodEnd)|default('Non déterminée') }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Tentative en cours</dt>
+                <dd class="mt-0.5 font-medium text-navy-500">n° {{ attempt.number }} sur {{ document.attempts|length }}</dd>
+            </div>
+        </dl>
+
+        <div class="mt-5 border-t border-gray-50 pt-5 text-sm">
+            {% if 'pending' == status.value %}
+                <p>
+                    {% if attempt.queuedAt %}
+                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, en attente d'un worker. Cette page se met à jour toute seule.
+                    {% else %}
+                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, pas encore mise en file : la réconciliation s'en charge.
+                    {% endif %}
+                </p>
+            {% elseif 'processing' == status.value %}
+                <p class="flex items-center gap-2">
+                    {{ ux_icon('lucide:loader-circle', {class: 'size-4 shrink-0 motion-safe:animate-spin text-info-500'}) }}
+                    Analyse en cours depuis le {{ attempt.startedAt|date('d/m/Y \\à H:i:s') }}. Cette page se met à jour toute seule.
+                </p>
+            {% elseif 'analyzed' == status.value %}
+                {% set analysis = client_analysis(document) %}
+                {% if analysis.summary %}
+                    <p class="text-base text-navy-500">{{ analysis.summary }}</p>
+                {% endif %}
+                {% if analysis.fields %}
+                    <h3 class="mt-4 text-sm">Informations extraites</h3>
+                    <dl class="mt-2 divide-y divide-gray-50 rounded-lg border border-gray-50">
+                        {% for field in analysis.fields %}
+                            <div class="flex flex-wrap justify-between gap-x-4 gap-y-0.5 px-4 py-2.5">
+                                <dt class="text-gray-500">{{ field.label }}</dt>
+                                <dd class="font-medium text-navy-500">{{ field.value }}</dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+                {% endif %}
+                {% if analysis.detectedType %}
+                    <p class="mt-4 text-gray-500">Nature détectée : <span class="font-medium text-navy-500">{{ analysis.detectedType.label }}</span></p>
+                {% endif %}
+            {% else %}
+                {% set reason = attempt.failureReason %}
+                <twig:Alert variant="danger" title="L'analyse n'a pas abouti">
+                    <p>
+                        {{ reason ? reason.label : 'Cause inconnue' }}{% if reason %} <code class="rounded bg-danger-100 px-1 py-0.5 text-xs">{{ reason.value }}</code>{% endif %}
+                    </p>
+                    <p>Tentative n° {{ attempt.number }}, échouée le {{ attempt.finishedAt|date('d/m/Y \\à H:i:s') }}.</p>
+                </twig:Alert>
+            {% endif %}
+        </div>
+    </twig:Card>
+</section>

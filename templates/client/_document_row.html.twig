@@ -1,9 +1,10 @@
 {# One received document. Its id is the target of the live updates (see realtime/document_streams.stream.html.twig). #}
+{# document_path: where the name links to (the admin client view passes its own page; default is the client's). #}
 {% set status = document.status %}
 {% set period = period_label(document.periodStart, document.periodEnd) %}
 <li id="document-{{ document.id }}" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 sm:px-6{{ highlight|default(false) ? ' row-highlight' }}">
     <div class="min-w-0 flex-1 basis-64">
-        <p class="truncate font-medium text-navy-500" title="{{ document.originalFilename }}"><a href="{{ path('client_document_show', {id: document.id}) }}" data-turbo-frame="_top" class="hover:underline">{{ document.originalFilename }}</a></p>
+        <p class="truncate font-medium text-navy-500" title="{{ document.originalFilename }}"><a href="{{ document_path|default(path('client_document_show', {id: document.id})) }}" data-turbo-frame="_top" class="hover:underline">{{ document.originalFilename }}</a></p>
         <p class="mt-0.5 text-sm text-gray-500">
             {{ document.type ? document.type.label : 'Non catégorisée' }}
             {% if period %}· {{ period }}{% endif %}

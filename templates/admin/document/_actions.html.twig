@@ -1,0 +1,27 @@
+{# Retry of a failed analysis. A Turbo Frame of its own, served by admin_document_actions as well: the CSRF token can only
+   be issued while handling a request, never by the worker that pushes the live updates. The form leaves the frame
+   (_top): the redirect after the POST is a full page visit. #}
+<turbo-frame id="admin-document-actions-{{ document.id }}">
+    {%- if 'failed' == document.status.value -%}
+        {% set reason = document.currentAttempt.failureReason %}
+        <twig:Card>
+            <h2 class="text-lg">Relancer l'analyse</h2>
+            <p class="mt-1 text-sm text-gray-500">
+                Crée une nouvelle tentative (n° {{ document.currentAttempt.number + 1 }}) sur la même pièce.
+                Le client verra « Analyse relancée par l'équipe OWNER », sans votre nom.
+            </p>
+
+            {% if reason is same as constant('App\\Enum\\FailureReason::UnreadableFile') %}
+                <twig:Alert variant="warning" class="mt-4">
+                    Le fichier est illisible : une relance échouera probablement. Demandez un nouveau fichier au client.
+                </twig:Alert>
+            {% endif %}
+
+            <form method="post" action="{{ path('admin_document_retry', {id: document.id}) }}" data-turbo-frame="_top" class="mt-4">
+                <input type="hidden" name="_token" value="{{ csrf_token('retry-' ~ document.id) }}">
+                {% if retour|default(null) %}<input type="hidden" name="retour" value="{{ retour }}">{% endif %}
+                <twig:Button type="submit" icon="lucide:rotate-ccw" data-turbo-submits-with="Relance en cours…">Relancer l'analyse</twig:Button>
+            </form>
+        </twig:Card>
+    {%- endif -%}
+</turbo-frame>
