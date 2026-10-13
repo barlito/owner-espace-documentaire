@@ -149,7 +149,7 @@ Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement
 
 ### Déroulé
 
-L'analyse passe par l'interface `App\Analysis\Provider\AnalysisProvider`, calquée sur un fournisseur tiers asynchrone (OCR, IA) : on lui **soumet** le document, il répond par une **référence**, puis on **vient chercher le résultat** avec cette référence. La seule implémentation aujourd'hui est `SimulatedAnalysisProvider`.
+L'analyse passe par l'interface `App\Analysis\Provider\Interface\AnalysisProviderInterface`, calquée sur un fournisseur tiers asynchrone (OCR, IA) : on lui **soumet** le document, il répond par une **référence**, puis on **vient chercher le résultat** avec cette référence. La seule implémentation aujourd'hui est `SimulatedAnalysisProvider`.
 
 1. **Dépôt** : le document et le message `StartAnalysis` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
 2. **Démarrage** (`StartAnalysisHandler`) : le worker verrouille le document (`SELECT … FOR UPDATE`), le soumet au fournisseur (`submit()`), enregistre la référence sur la tentative (`provider_reference`), passe le document « en cours » et programme le message `CheckAnalysisOutcome` après le délai indiqué par le fournisseur. Il n'y a **aucun `sleep()`** : le worker reste libre pour les autres documents.
@@ -164,7 +164,7 @@ Le simulateur ne garde aucun état : le scénario tiré à la soumission est éc
 
 ### Brancher un vrai fournisseur
 
-Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProvider`, avec le client HTTP de Symfony et la conversion de la réponse du fournisseur en `AnalysisResult` / `FailureReason`, puis l'alias de `App\Analysis\Provider\AnalysisProvider` dans `config/services.yaml`. Points d'attention, déjà prévus par le contrat :
+Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProviderInterface`, avec le client HTTP de Symfony et la conversion de la réponse du fournisseur en `AnalysisResult` / `FailureReason`, puis l'alias de `App\Analysis\Provider\Interface\AnalysisProviderInterface` dans `config/services.yaml`. Points d'attention, déjà prévus par le contrat :
 
 - **Idempotence** : si la soumission réussit mais que la transaction échoue ensuite, Messenger rejoue le message ; l'identifiant de la tentative sert de clé d'idempotence auprès du fournisseur pour éviter une double soumission.
 - **Appel HTTP sous verrou** : `submit()` et `fetchOutcome()` s'exécutent dans la transaction du worker, ligne verrouillée : timeout court. Pour un fournisseur lent, isoler la soumission dans son propre message.
@@ -283,7 +283,7 @@ src/
 ├── Security/  Twig/  DataFixtures/
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
-    ├── Provider/     le contrat d'un fournisseur d'analyse (interface et objets échangés)
+    ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/
     └── Simulation/   l'implémentation simulée du fournisseur (scénario, lecture du nom de fichier)
 ```
 

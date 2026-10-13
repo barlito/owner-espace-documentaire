@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\MessageHandler;
 
-use App\Analysis\Provider\AnalysisProvider;
+use App\Analysis\Provider\Interface\AnalysisProviderInterface;
 use App\Enum\DocumentStatus;
 use App\Message\CheckAnalysisOutcome;
 use App\Repository\DocumentRepository;
@@ -22,7 +22,7 @@ final readonly class CheckAnalysisOutcomeHandler
 {
     public function __construct(
         private DocumentRepository $documents,
-        private AnalysisProvider $provider,
+        private AnalysisProviderInterface $provider,
         private MessageBusInterface $bus,
         private LoggerInterface $logger,
     ) {

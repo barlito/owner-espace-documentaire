@@ -61,7 +61,7 @@ class AnalysisAttempt
     private ?\DateTimeImmutable $queuedAt = null;
 
     /**
-     * Identifies the analysis on the provider side (see AnalysisProvider): set when the attempt starts, used to
+     * Identifies the analysis on the provider side (see AnalysisProviderInterface): set when the attempt starts, used to
      * fetch its outcome, and the key to find the attempt back from a provider webhook or for support.
      */
     #[ORM\Column(length: 255, nullable: true)]

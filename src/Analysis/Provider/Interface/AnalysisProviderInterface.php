@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis\Provider;
+namespace App\Analysis\Provider\Interface;
 
+use App\Analysis\Provider\AnalysisOutcome;
+use App\Analysis\Provider\AnalysisSubmission;
 use App\Entity\Document;
 
 /**
@@ -16,7 +18,7 @@ use App\Entity\Document;
  * Both methods run inside the worker's database transaction, with the document row locked: implementations
  * calling an HTTP API must use a short timeout.
  */
-interface AnalysisProvider
+interface AnalysisProviderInterface
 {
     /**
      * Sends the document of the current attempt. Messenger may replay this call (for instance when the database

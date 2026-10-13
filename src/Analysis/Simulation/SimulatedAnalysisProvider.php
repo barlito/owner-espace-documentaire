@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Analysis\Simulation;
 
 use App\Analysis\Provider\AnalysisOutcome;
-use App\Analysis\Provider\AnalysisProvider;
 use App\Analysis\Provider\AnalysisSubmission;
+use App\Analysis\Provider\Interface\AnalysisProviderInterface;
 use App\Entity\Document;
 use App\Enum\FailureReason;
 use Psr\Clock\ClockInterface;
@@ -16,7 +16,7 @@ use Psr\Clock\ClockInterface;
  * ("sim:<attempt>:<outcome>:<ready at, ms>"), so the provider keeps no state, like a real one that would
  * store it on its side. A long analysis is polled several times, which exercises the "still running" path.
  */
-final readonly class SimulatedAnalysisProvider implements AnalysisProvider
+final readonly class SimulatedAnalysisProvider implements AnalysisProviderInterface
 {
     /** How often a running analysis is polled. */
     public const int POLL_INTERVAL_MS = 20_000;

@@ -6,6 +6,8 @@ namespace App\Tests\Integration\MessageHandler;
 
 use App\Analysis\AnalysisResult;
 use App\Analysis\Provider\AnalysisOutcome;
+use App\Analysis\Provider\AnalysisSubmission;
+use App\Analysis\Provider\Interface\AnalysisProviderInterface;
 use App\Entity\Document;
 use App\Enum\AttemptStatus;
 use App\Enum\DocumentEventType;
@@ -82,8 +84,8 @@ final class AnalysisHandlersTest extends AnalysisTestCase
     public function testAProviderErrorAtSubmissionLeavesTheDocumentUntouched(): void
     {
         $document = $this->createDocument();
-        $failing = new class implements \App\Analysis\Provider\AnalysisProvider {
-            public function submit(Document $document): \App\Analysis\Provider\AnalysisSubmission
+        $failing = new class implements AnalysisProviderInterface {
+            public function submit(Document $document): AnalysisSubmission
             {
                 throw new \RuntimeException('Provider unavailable.');
             }

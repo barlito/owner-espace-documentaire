@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Integration\MessageHandler;
 
 use App\Analysis\Provider\AnalysisOutcome;
-use App\Analysis\Provider\AnalysisProvider;
 use App\Analysis\Provider\AnalysisSubmission;
+use App\Analysis\Provider\Interface\AnalysisProviderInterface;
 use App\Entity\Document;
 
 /**
  * Provider whose answers are set by the test: the handlers are tested apart from the simulation.
  */
-final class StubAnalysisProvider implements AnalysisProvider
+final class StubAnalysisProvider implements AnalysisProviderInterface
 {
     /** @var list<AnalysisOutcome> */
     private array $outcomes = [];
