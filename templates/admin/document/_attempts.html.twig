@@ -1,0 +1,33 @@
+{# Every analysis attempt of the document, latest first. Replaced as a whole by the live updates; same constraints as
+   _status.html.twig. One card per attempt rather than a table: nine columns did not fit next to the history. #}
+<section id="admin-document-attempts-{{ document.id }}" aria-labelledby="admin-document-attempts-title-{{ document.id }}">
+    <twig:Card>
+        <h2 id="admin-document-attempts-title-{{ document.id }}" class="text-lg">Tentatives</h2>
+        <ol class="mt-4 space-y-3">
+            {% for attempt in document.attempts|reverse %}
+                {% set variant = {pending: 'neutral', running: 'info', succeeded: 'success', failed: 'danger'}[attempt.status.value] %}
+                {% set statusLabel = {pending: 'En attente', running: 'En cours', succeeded: 'Réussie', failed: 'Échouée'}[attempt.status.value] %}
+                <li class="rounded-lg border border-gray-50 p-4" data-attempt="{{ attempt.number }}">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-base">
+                            Tentative n° {{ attempt.number }}
+                            {% if attempt.id == document.currentAttempt.id %}<span class="ml-1 text-xs font-medium text-gray-500">(actuelle)</span>{% endif %}
+                        </h3>
+                        <twig:Badge variant="{{ variant }}">{{ statusLabel }}</twig:Badge>
+                    </div>
+                    <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                        <div><dt class="text-gray-500">Déclenchée par</dt><dd class="font-medium text-navy-500" data-triggered-by>{{ attempt.triggeredBy ? attempt.triggeredBy.fullName : 'Dépôt' }}</dd></div>
+                        <div><dt class="text-gray-500">Durée</dt><dd class="font-medium text-navy-500">{{ attempt.startedAt|duration(attempt.finishedAt)|default('—') }}</dd></div>
+                        <div><dt class="text-gray-500">Demandée</dt><dd>{{ attempt.requestedAt|date('d/m/Y H:i:s') }}</dd></div>
+                        <div><dt class="text-gray-500">Démarrée</dt><dd>{{ attempt.startedAt ? attempt.startedAt|date('d/m/Y H:i:s') : '—' }}</dd></div>
+                        <div><dt class="text-gray-500">Terminée</dt><dd>{{ attempt.finishedAt ? attempt.finishedAt|date('d/m/Y H:i:s') : '—' }}</dd></div>
+                        <div class="min-w-0"><dt class="text-gray-500">Référence fournisseur</dt><dd class="font-mono text-xs break-all">{{ attempt.providerReference|default('—') }}</dd></div>
+                        {% if attempt.failureReason %}
+                            <div class="sm:col-span-2"><dt class="text-gray-500">Raison technique</dt><dd>{{ attempt.failureReason.label }} <code class="text-xs text-gray-500">{{ attempt.failureReason.value }}</code></dd></div>
+                        {% endif %}
+                    </dl>
+                </li>
+            {% endfor %}
+        </ol>
+    </twig:Card>
+</section>

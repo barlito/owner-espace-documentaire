@@ -1,0 +1,27 @@
+{# Global document counts per status. Replaced as a whole by the live updates (realtime/admin_streams.stream.html.twig),
+   rendered by the page and by the worker: it must not use the request nor the logged-in user. #}
+{% set counts = {} %}
+{% for entry in statusCounts %}
+    {% set counts = counts|merge({(entry.status.value): entry.count}) %}
+{% endfor %}
+{% set cards = [
+    {key: 'pending', label: 'En attente', icon: 'lucide:clock', tone: 'bg-gray-50 text-gray-700'},
+    {key: 'processing', label: 'En cours', icon: 'lucide:loader-circle', tone: 'bg-info-50 text-info-500'},
+    {key: 'failed', label: 'En échec', icon: 'lucide:circle-x', tone: 'bg-danger-50 text-danger-700'},
+    {key: 'analyzed', label: 'Analysées', icon: 'lucide:circle-check', tone: 'bg-success-50 text-success-700'},
+] %}
+<section id="admin-kpis" aria-label="Documents par statut" class="mb-8">
+    <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {% for card in cards %}
+            {% set count = counts[card.key]|default(0) %}
+            {% set alert = 'failed' == card.key and count > 0 %}
+            <div class="rounded-xl border p-4 shadow-card sm:p-5 {{ alert ? 'border-danger-100 bg-danger-50' : 'border-gray-50 bg-white' }}">
+                <dt class="flex items-center gap-2 text-sm font-medium text-gray-500">
+                    <span class="flex size-7 shrink-0 items-center justify-center rounded-full {{ card.tone }}">{{ ux_icon(card.icon, {class: 'size-4'}) }}</span>
+                    {{ card.label }}
+                </dt>
+                <dd class="mt-3 font-display text-3xl font-semibold {{ alert ? 'text-danger-700' : 'text-navy-500' }}">{{ count|number_format(0, ',', ' ') }}</dd>
+            </div>
+        {% endfor %}
+    </dl>
+</section>

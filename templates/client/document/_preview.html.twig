@@ -1,29 +1,32 @@
 {# Display of the stored file. Static: the file never changes once received. #}
+{# preview_route and file_route default to the client's; the admin page passes its own. #}
 {% set kind = file_kind(document) %}
+{% set previewPath = path(preview_route|default('client_document_preview'), {id: document.id}) %}
+{% set filePath = path(file_route|default('client_document_file'), {id: document.id}) %}
 <section aria-labelledby="document-preview-title">
     <twig:Card>
         <h2 id="document-preview-title" class="text-lg">Aperçu</h2>
 
         {% if 'Pdf' == kind.name %}
             <iframe
-                src="{{ path('client_document_preview', {id: document.id}) }}"
+                src="{{ previewPath }}"
                 title="Aperçu de {{ document.originalFilename }}"
                 class="mt-4 hidden h-[70vh] min-h-96 w-full rounded-lg border border-gray-50 sm:block"
             ></iframe>
             {# Phones rarely embed a PDF viewer well: open it in the browser's own viewer instead. #}
             <p class="mt-4 sm:hidden">
-                <twig:Button href="{{ path('client_document_preview', {id: document.id}) }}" variant="secondary" icon="lucide:eye" target="_blank" rel="noopener">Ouvrir l'aperçu</twig:Button>
+                <twig:Button href="{{ previewPath }}" variant="secondary" icon="lucide:eye" target="_blank" rel="noopener">Ouvrir l'aperçu</twig:Button>
             </p>
         {% elseif 'Image' == kind.name %}
             <img
-                src="{{ path('client_document_preview', {id: document.id}) }}"
+                src="{{ previewPath }}"
                 alt="Aperçu de {{ document.originalFilename }}"
                 class="mt-4 max-h-[70vh] w-full rounded-lg border border-gray-50 bg-gray-25 object-contain"
                 loading="lazy"
             >
         {% else %}
             <twig:EmptyState icon="{{ kind.icon }}" title="Aperçu non disponible pour ce format" description="Ce format ne peut pas être affiché dans la page. Téléchargez le fichier pour le consulter.">
-                <twig:Button href="{{ path('client_document_file', {id: document.id}) }}" icon="lucide:download">Télécharger</twig:Button>
+                <twig:Button href="{{ filePath }}" icon="lucide:download">Télécharger</twig:Button>
             </twig:EmptyState>
         {% endif %}
     </twig:Card>

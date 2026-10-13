@@ -9,12 +9,14 @@ use App\DocumentList\Page;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Enum\DocumentStatus;
+use App\Supervision\TodoFilters;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -79,15 +81,27 @@ class DocumentRepository extends ServiceEntityRepository
      */
     public function countByStatusForClient(Client $client): array
     {
-        /** @var list<array{status: DocumentStatus, total: int|string}> $rows */
-        $rows = $this->createQueryBuilder('d')
+        return $this->countByStatus($client);
+    }
+
+    /**
+     * Number of documents per status, in the order of the enum (statuses without document: 0): of one client, or of
+     * all of them. A single grouped query; the supervision KPIs.
+     *
+     * @return list<array{status: DocumentStatus, count: int}>
+     */
+    public function countByStatus(?Client $client = null): array
+    {
+        $queryBuilder = $this->createQueryBuilder('d')
             ->select('d.status AS status', 'COUNT(d.id) AS total')
-            ->andWhere('d.client = :client')
-            ->setParameter('client', $client)
             ->groupBy('d.status')
-            ->getQuery()
-            ->getResult()
         ;
+        if (null !== $client) {
+            $queryBuilder->andWhere('d.client = :client')->setParameter('client', $client);
+        }
+
+        /** @var list<array{status: DocumentStatus, total: int|string}> $rows */
+        $rows = $queryBuilder->getQuery()->getResult();
 
         $counts = [];
         foreach ($rows as $row) {
@@ -116,6 +130,97 @@ class DocumentRepository extends ServiceEntityRepository
         );
 
         return $months;
+    }
+
+    /**
+     * One page of the supervision "À traiter" list: documents whose current attempt failed, for all clients, the
+     * longest-waiting first. Client and current attempt are loaded with the documents (the rows show both).
+     *
+     * @return Page<Document>
+     */
+    public function searchFailed(TodoFilters $filters, int $page, int $perPage): Page
+    {
+        $total = $this->countFailed($filters);
+        $number = Page::clamp($page, $total, $perPage);
+        if (0 === $total) {
+            return new Page([], 0, 1, $perPage);
+        }
+
+        /** @var list<Document> $items */
+        $items = $this->filteredFailed($filters)
+            ->join('d.client', 'c')
+            ->addSelect('a', 'c')
+            // A failed attempt always has a finish date; the id makes the order total, so pages never overlap.
+            ->orderBy('a.finishedAt', 'ASC')
+            ->addOrderBy('d.id', 'ASC')
+            ->setFirstResult(($number - 1) * $perPage)
+            ->setMaxResults($perPage)
+            ->getQuery()
+            ->getResult()
+        ;
+
+        return new Page($items, $total, $number, $perPage);
+    }
+
+    public function countFailed(TodoFilters $filters): int
+    {
+        return (int) $this->filteredFailed($filters)
+            ->select('COUNT(d.id)')
+            ->getQuery()
+            ->getSingleScalarResult()
+        ;
+    }
+
+    /**
+     * Clients that have failed documents, with how many, by name: the choices of the "client" filter.
+     *
+     * @return list<array{id: Uuid, name: string, count: int}>
+     */
+    public function failedCountsByClient(): array
+    {
+        /** @var list<array{id: Uuid, name: string, total: int|string}> $rows */
+        $rows = $this->createQueryBuilder('d')
+            ->join('d.client', 'c')
+            ->select('c.id AS id', 'c.name AS name', 'COUNT(d.id) AS total')
+            ->andWhere('d.status = :status')
+            ->setParameter('status', DocumentStatus::Failed)
+            ->groupBy('c.id', 'c.name')
+            ->orderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getResult()
+        ;
+
+        return array_map(
+            static fn (array $row): array => ['id' => $row['id'], 'name' => $row['name'], 'count' => (int) $row['total']],
+            $rows,
+        );
+    }
+
+    private function filteredFailed(TodoFilters $filters): QueryBuilder
+    {
+        // Served by the partial index on failed documents, whatever the size of the history.
+        $queryBuilder = $this->createQueryBuilder('d')
+            ->join('d.currentAttempt', 'a')
+            ->andWhere('d.status = :failed')
+            ->setParameter('failed', DocumentStatus::Failed)
+        ;
+
+        if (null !== $filters->clientId) {
+            $queryBuilder->andWhere('IDENTITY(d.client) = :client')->setParameter('client', $filters->clientId, UuidType::NAME);
+        }
+
+        if (null !== $filters->search) {
+            $queryBuilder
+                ->andWhere('LOWER(UNACCENT(d.originalFilename)) LIKE LOWER(UNACCENT(:search))')
+                ->setParameter('search', '%' . DocumentFilters::escapeLike($filters->search) . '%')
+            ;
+        }
+
+        if (null !== $filters->reason) {
+            $queryBuilder->andWhere('a.failureReason = :reason')->setParameter('reason', $filters->reason);
+        }
+
+        return $queryBuilder;
     }
 
     /**
@@ -167,18 +272,30 @@ class DocumentRepository extends ServiceEntityRepository
      */
     public function findForUpdate(Uuid $documentId, Uuid $attemptId, DocumentStatus $status): ?Document
     {
+        $document = $this->findLocked($documentId);
+
+        return $document?->getStatus() === $status && $document->getCurrentAttempt()->getId()->equals($attemptId) ? $document : null;
+    }
+
+    /**
+     * Locks the document row whatever its state and returns it as it is in the database, or null when it does not exist.
+     * For callers that decide from the state themselves (the admin retry tells "already handled" from "unknown").
+     * Must run inside a transaction: the lock lasts until its end.
+     */
+    public function findLocked(Uuid $documentId): ?Document
+    {
         $entityManager = $this->getEntityManager();
 
         // find() would lock an entity already in memory without reading it again: refresh it under the lock instead,
-        // so that the state checked below is the one in the database.
+        // so that the state checked by the caller is the one in the database.
         $document = $entityManager->getUnitOfWork()->tryGetById($documentId, Document::class);
         if ($document instanceof Document) {
             $entityManager->refresh($document, LockMode::PESSIMISTIC_WRITE);
-        } else {
-            $document = $entityManager->find(Document::class, $documentId, LockMode::PESSIMISTIC_WRITE);
+
+            return $document;
         }
 
-        return $document?->getStatus() === $status && $document->getCurrentAttempt()->getId()->equals($attemptId) ? $document : null;
+        return $entityManager->find(Document::class, $documentId, LockMode::PESSIMISTIC_WRITE);
     }
 
     /**

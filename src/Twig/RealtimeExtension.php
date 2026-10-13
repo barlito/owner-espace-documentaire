@@ -18,4 +18,13 @@ final class RealtimeExtension
     {
         return Topics::client($client->getId());
     }
+
+    /**
+     * The only topic an administrator page subscribes to. Never granted to a client account.
+     */
+    #[AsTwigFunction('admin_topic')]
+    public function adminTopic(): string
+    {
+        return Topics::admin();
+    }
 }

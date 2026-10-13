@@ -1,0 +1,56 @@
+{# Turbo Stream actions for one document, published on the admin topic (every client's documents). A target that is
+   not on the page the browser is showing is silently ignored: each page only reacts to what it contains. #}
+{% set failed = 'failed' == document.status.value %}
+
+{# Supervision: fresh global counts on every change. One grouped COUNT per published update. #}
+<turbo-stream action="replace" target="admin-kpis">
+    <template>{{ include('admin/_kpis.html.twig') }}</template>
+</turbo-stream>
+
+{# Supervision, "À traiter": a document no longer failed leaves the list. A newly failed one does not reorder the list
+   under the administrator's cursor: they are told, and refresh when ready. #}
+{% if failed %}
+    <turbo-stream action="update" target="admin-todo-notice">
+        <template>
+            <twig:Alert variant="info">
+                De nouvelles pièces sont en échec.
+                {# An empty href is the current URL, filters and page included. #}
+                <a href="" class="font-semibold underline underline-offset-2">Actualiser la liste</a>
+            </twig:Alert>
+        </template>
+    </turbo-stream>
+{% else %}
+    <turbo-stream action="remove" target="admin-todo-{{ document.id }}"></turbo-stream>
+{% endif %}
+
+{# Announcements, in the page's single live region (templates/base.html.twig). The supervision page only hears about
+   failures and retries, not about the traffic of every client; a document page about its own document. #}
+{% if failed %}
+    <turbo-stream action="update" targets="#live-status[data-live-scope='admin-todo']">
+        <template>{{ document.originalFilename }} : échec de l'analyse. Actualisez la liste pour l'afficher.</template>
+    </turbo-stream>
+{% elseif 'pending' == document.status.value and document.currentAttempt.number > 1 %}
+    <turbo-stream action="update" targets="#live-status[data-live-scope='admin-todo']">
+        <template>{{ document.originalFilename }} : analyse relancée.</template>
+    </turbo-stream>
+{% endif %}
+<turbo-stream action="update" targets="#live-status[data-live-scope='document-{{ document.id }}']">
+    <template>{{ document.originalFilename }} : {{ document.status.announcement }}.</template>
+</turbo-stream>
+
+{# Document page #}
+{% if not created %}
+    <turbo-stream action="replace" target="admin-document-status-{{ document.id }}">
+        <template>{{ include('admin/document/_status.html.twig') }}</template>
+    </turbo-stream>
+    <turbo-stream action="replace" target="admin-document-attempts-{{ document.id }}">
+        <template>{{ include('admin/document/_attempts.html.twig') }}</template>
+    </turbo-stream>
+    <turbo-stream action="replace" target="admin-document-timeline-{{ document.id }}">
+        <template>{{ include('client/document/_timeline.html.twig', {timeline_id: 'admin-document-timeline-' ~ document.id, timeline_entries: admin_timeline(document)}) }}</template>
+    </turbo-stream>
+    {# The retry button needs a CSRF token: the frame loads it from the page's own route, in the viewer's session. #}
+    <turbo-stream action="replace" target="admin-document-actions-{{ document.id }}">
+        <template><turbo-frame id="admin-document-actions-{{ document.id }}" class="block empty:hidden" src="{{ path('admin_document_actions', {id: document.id}) }}"></turbo-frame></template>
+    </turbo-stream>
+{% endif %}

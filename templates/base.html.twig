@@ -29,6 +29,10 @@
                 </div>
             </header>
 
+            {% if is_granted('ROLE_ADMIN') %}
+                {{ include('admin/_nav.html.twig') }}
+            {% endif %}
+
             <main id="contenu" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
                 {% for type, messages in app.flashes %}
                     {% for message in messages %}

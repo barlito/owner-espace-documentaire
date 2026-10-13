@@ -1,12 +1,13 @@
 {# Search and filters, submitted by GET: the URL carries the state. Without JavaScript the "Rechercher" button submits
    the form and loads the whole page; with it, the form reloads the results frame only. #}
+{# Also used by the admin client view: it passes its own filters_action and filters_label. #}
 {% set field = 'w-full rounded-lg border border-gray-100 bg-white px-3 py-2.5' %}
 <twig:Card class="mb-6">
     <form
         method="get"
-        action="{{ path('client_dashboard') }}"
+        action="{{ filters_action|default(path('client_dashboard')) }}"
         role="search"
-        aria-label="Rechercher dans mes pièces"
+        aria-label="{{ filters_label|default('Rechercher dans mes pièces') }}"
         class="space-y-4"
         data-document-filters-target="form"
         data-turbo-frame="documents-results"

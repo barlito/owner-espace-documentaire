@@ -14,9 +14,10 @@ use Symfony\Component\Mercure\Update;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Pushes the document's current state to the hub. A hub failure is not caught: Messenger retries the message and
- * eventually parks it in the failed transport. The state itself is already committed, so the worst case is a page
- * that shows it after a reload instead of live.
+ * Pushes the document's current state to the hub: once for its client's pages, once for the administrators' pages.
+ * A hub failure is not caught: Messenger retries the message and eventually parks it in the failed transport. The
+ * state itself is already committed, so the worst case is a page that shows it after a reload instead of live.
+ * (A retry republishes both updates; they replace content, so receiving one twice changes nothing.)
  */
 #[AsMessageHandler]
 final readonly class PublishDocumentUpdateHandler
@@ -42,6 +43,14 @@ final readonly class PublishDocumentUpdateHandler
         $this->hub->publish(new Update(
             Topics::client($document->getClient()->getId()),
             $this->streams->render($document, $message->created),
+            private: true,
+        ));
+
+        // A separate update, not a shared topic: the client's payload stays what it was, and the technical details
+        // the back office shows (admin names, causes) never travel on a topic a client can subscribe to.
+        $this->hub->publish(new Update(
+            Topics::admin(),
+            $this->streams->renderForAdmin($document, $message->created),
             private: true,
         ));
     }

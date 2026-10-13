@@ -18,4 +18,10 @@ final class TopicsTest extends TestCase
         $this->assertSame(\sprintf('/clients/%s/documents', $martin->toRfc4122()), Topics::client($martin));
         $this->assertNotSame(Topics::client($martin), Topics::client($petitsPas));
     }
+
+    public function testTheBackOfficeHasOneTopicOfItsOwnThatIsNoClients(): void
+    {
+        $this->assertSame('/admin/documents', Topics::admin());
+        $this->assertNotSame(Topics::admin(), Topics::client(Uuid::v7()));
+    }
 }

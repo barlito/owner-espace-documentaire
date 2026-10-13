@@ -270,7 +270,7 @@ Quand une analyse avance, la page ouverte se met à jour toute seule : le tablea
 ### Confidentialité
 
 - Un topic **par client** : `/clients/{uuid}/documents` (défini dans `App\Realtime\Topics`, seul endroit où les topics sont nommés). Toute publication est `private`.
-- Le hub n'accepte **aucun abonné anonyme**. La page pose un cookie `mercureAuthorization` (JWT, HttpOnly, `SameSite=Strict`) dont le claim `subscribe` ne contient que le topic du client connecté : connaître l'uuid d'un autre client ne suffit pas à écouter ses mises à jour. Le navigateur ne peut jamais publier. Les pages admin ne posent pas ce cookie. Testé dans `tests/Functional/RealtimeTest.php` (le JWT est décodé et son contenu vérifié).
+- Le hub n'accepte **aucun abonné anonyme**. La page pose un cookie `mercureAuthorization` (JWT, HttpOnly, `SameSite=Strict`) dont le claim `subscribe` ne contient que le topic du client connecté : connaître l'uuid d'un autre client ne suffit pas à écouter ses mises à jour. Le navigateur ne peut jamais publier. Les pages admin reçoivent un cookie limité au seul topic `/admin/documents` (voir « Supervision »), les pages client jamais. Testé dans `tests/Functional/RealtimeTest.php` (le JWT est décodé et son contenu vérifié).
 - Une seule clé (`MERCURE_JWT_SECRET`) signe le jeton de publication et les cookies, et le hub la vérifie : seule l'application émet des jetons. Le hub est en mode de compatibilité Mercure 0.x (`protocol_version_compatibility 8`) car `symfony/mercure` n'émet pas encore les jetons RFC 9068 du mode 1.0.
 
 ### Accessibilité
@@ -287,12 +287,6 @@ Rien n'en dépend : si le hub est indisponible, la page s'affiche et un recharge
 - Les fixtures coupent l'écouteur (`QueueDocumentUpdateListener::mute()`) : des milliers de documents que personne ne regarde n'ont pas à remplir la file.
 - Avec RabbitMQ (voir plus haut), le message de publication cesse d'être atomique avec la base ; une mise à jour manquée est sans gravité (rechargement).
 
-### Brancher l'admin (ou la page d'un document) plus tard
-
-1. Nommer le topic dans `Topics` (par exemple `Topics::admin()`) et poser le cookie correspondant sur les seules pages admin.
-2. Ajouter ses actions Turbo Stream dans `document_streams.stream.html.twig` (ou rendre un second flux dans `DocumentStreamRenderer`) et publier un second `Update` sur ce topic dans `PublishDocumentUpdateHandler`. Rien ne change côté écouteur : il décide déjà « ce document a changé ».
-3. Donner à chaque élément visé un `id` stable, comme `document-{uuid}`.
-
 ### Variables d'environnement
 
 | Variable | Rôle | Valeur par défaut (dev) |
@@ -303,6 +297,50 @@ Rien n'en dépend : si le hub est indisponible, la page s'affiche et un recharge
 | `MERCURE_CORS_ORIGINS` | Origines acceptées par le hub | `http://localhost:${HTTP_PORT}` |
 
 En production, `MERCURE_JWT_SECRET` doit être un secret aléatoire d'au moins 256 bits (`openssl rand -hex 32`) fourni par l'environnement réel, jamais la valeur de développement ; `MERCURE_URL`, `MERCURE_PUBLIC_URL` et `MERCURE_CORS_ORIGINS` suivent le domaine réel.
+
+## Supervision (administrateur)
+
+Toutes les routes `/admin*` exigent `ROLE_ADMIN` (un client reçoit 403) ; un identifiant invalide est un 404. La navigation du back-office (Supervision · Clients) s'affiche sous l'en-tête des administrateurs seulement.
+
+| Page | Contenu |
+| --- | --- |
+| `/admin` Supervision | Quatre compteurs globaux (en attente, en cours, en échec, analysées, une requête groupée) et la liste **À traiter** : documents dont la tentative courante a échoué, tous clients confondus, **échec le plus ancien d'abord**. Colonnes : fichier, client, raison technique, n° de tentative, « échoué depuis » (relatif et date). Filtres en GET (URL partageable, Turbo Frame, pastilles) : client, raison, nom de fichier (insensible à la casse et aux accents). 25 par page. |
+| `/admin/clients` | Clients recherchables par nom, ceux qui ont le plus d'échecs en premier puis par nom, avec leurs documents par statut. Deux requêtes quelle que soit la page : la page de clients, puis un `GROUP BY` pour les clients affichés (pas de N+1). |
+| `/admin/clients/{id}` | Le dossier d'un client avec exactement la recherche, les filtres et la pagination de « Mon dossier » (mêmes `DocumentFilters` et requêtes, partiels partagés et paramétrés). Seuls les documents de ce client sont lus. |
+| `/admin/pieces/{id}` | Page d'une pièce : mêmes blocs que côté client, plus le client, le **tableau des tentatives** (déclenchée par « Dépôt » ou le nom de l'administrateur, dates, durée, référence fournisseur, statut, raison technique), l'**historique administrateur** et l'action **Relancer**. Fichier et aperçu par `/admin/pieces/{id}/fichier` et `/apercu` (même `DocumentFileResponder`, droit `DOCUMENT_VIEW`). |
+
+Le lien « Retour » de la page d'une pièce et la redirection après une relance reviennent à la liste d'où l'on vient (paramètre `retour`, accepté seulement s'il s'agit d'un chemin `/admin…` interne : pas de redirection ouverte).
+
+### Relance idempotente
+
+`POST /admin/pieces/{id}/relancer` (jeton CSRF propre au document, `retry-{id}` ; droit `DOCUMENT_RETRY`) délègue à `AnalysisRetrier`, qui fait tout dans **une transaction** :
+
+1. verrou de la ligne du document (`SELECT … FOR UPDATE`, relue sous verrou même si l'entité est déjà en mémoire) ;
+2. contrôle de l'état **sous le verrou** : si le document n'est plus en échec (double clic, deuxième administrateur, déjà relancé), aucune tentative n'est créée et l'administrateur lit « Relance déjà prise en compte. » ;
+3. sinon `Document::retryAnalysis()` (tentative n+1, « déclenchée par » l'administrateur) puis `AnalysisQueue::enqueue()` : le message est écrit dans la même transaction que la tentative.
+
+Un clic ou dix produisent donc une tentative et un message. La base garde le dernier mot : un document ne peut pas avoir deux tentatives non terminées (index unique partiel). Le bouton se désactive pendant l'envoi (`data-turbo-submits-with`). Si le dernier échec est `unreadable_file`, un avertissement précède le bouton (la relance reste permise).
+
+### Historique : ce que voit l'administrateur, ce que voit le client
+
+Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par l'équipe OWNER », causes en langage courant, jamais de nom ni de code), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
+
+### Temps réel côté admin
+
+`Topics::admin()` (`/admin/documents`) : `PublishDocumentUpdateHandler` publie une **seconde** mise à jour privée par changement, avec les flux administrateur (`realtime/admin_streams.stream.html.twig`) ; la mise à jour du client ne change pas et ne contient rien d'administrateur. Seules la Supervision et la page d'une pièce abonnent leur page à ce topic (cookie limité à lui seul) ; les pages client n'y ont jamais accès (testé).
+
+- Liste « À traiter » : une ligne dont le document n'est plus en échec disparaît (`admin-todo-{id}`). Un document qui **vient d'échouer** ne réordonne pas la liste sous le curseur : un avis « De nouvelles pièces sont en échec. Actualiser la liste » apparaît.
+- Compteurs remplacés par des valeurs fraîches : un `COUNT … GROUP BY status` par mise à jour publiée (1,5 ms pour 5 200 documents, mais linéaire : au-delà de quelques millions de lignes, passer à des compteurs maintenus ou à un rafraîchissement groupé). Les fixtures coupent la publication.
+- Page d'une pièce : statut, tentatives et historique sont remplacés ; le bouton Relancer, qui porte un jeton CSRF que le worker ne peut pas émettre, est rechargé par un Turbo Frame paresseux depuis `admin_document_actions`.
+- Région vocale (`#live-status`) : la Supervision n'annonce que les nouveaux échecs et les relances, pas le trafic de tous les clients ; la page d'une pièce n'annonce que sa pièce.
+
+### Volume (`make fixtures.volume`, ~5 200 documents, 188 en échec, 43 clients)
+
+`EXPLAIN (ANALYZE)` mesurés : liste « À traiter » 1,4 ms (page 1) et 0,8 ms (page 8, la dernière), avec filtre client 0,09 ms, avec recherche 0,5 ms ; compteurs 1,5 ms ; page clients 0,35 ms + 1,1 ms pour les compteurs par statut de 26 clients dont celui de 3 000 documents ; choix du filtre client 0,2 ms. L'index partiel `idx_document_failed` porte la liste (seuls les échecs sont lus, triés en mémoire) : **aucun index ajouté**, le coût suit le nombre d'échecs, pas celui de l'historique.
+
+### Évolution possible
+
+Pas de relance en masse : chaque relance est un geste réfléchi (la raison technique et l'avertissement « illisible » comptent). Une relance groupée appellerait `AnalysisRetrier` document par document, chacun dans sa transaction, avec un compte rendu (relancées / déjà prises en compte).
 
 ## Page d'une pièce
 
@@ -369,7 +407,8 @@ src/
 ├── Realtime/    nommage des topics Mercure et rendu des mises à jour en direct
 ├── DocumentList/ métier de « Mon dossier » : filtres de recherche, pagination, libellés de période
 ├── Doctrine/    extensions DQL (fonction `UNACCENT`)
-├── DocumentPage/ page d'une pièce côté client : réponses de fichier, textes de l'historique et de l'analyse
+├── DocumentPage/ page d'une pièce : réponses de fichier, textes de l'historique et de l'analyse (client et administrateur)
+├── Supervision/ métier du back-office : filtres de la liste « À traiter », vue d'un client, chemin de retour sûr
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
     ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/
