@@ -1,0 +1,23 @@
+{# History of a document, oldest first: it reads as a story and a new step lands at the bottom, where the eye ends.
+   Replaced as a whole by the live updates; same constraints as _status.html.twig. #}
+<section id="document-page-timeline-{{ document.id }}" aria-labelledby="document-page-timeline-title-{{ document.id }}">
+    <twig:Card>
+        <h2 id="document-page-timeline-title-{{ document.id }}" class="text-lg">Historique</h2>
+        <ol class="mt-4 space-y-5">
+            {% for entry in client_timeline(document) %}
+                <li class="relative flex gap-3">
+                    {# Connector to the next step #}
+                    {% if not loop.last %}<span class="absolute top-8 bottom-[-1.25rem] left-4 w-px bg-gray-50" aria-hidden="true"></span>{% endif %}
+                    <span class="relative flex size-8 shrink-0 items-center justify-center rounded-full {{ {neutral: 'bg-gray-50 text-gray-700', info: 'bg-info-50 text-info-500', success: 'bg-success-50 text-success-700', danger: 'bg-danger-50 text-danger-700'}[entry.variant] }}">
+                        {{ ux_icon(entry.icon, {class: 'size-4'}) }}
+                    </span>
+                    <div class="min-w-0 pt-0.5 text-sm">
+                        <p class="font-medium text-navy-500">{{ entry.label }}</p>
+                        {% if entry.detail %}<p class="text-gray-500">{{ entry.detail }}</p>{% endif %}
+                        <time datetime="{{ entry.occurredAt|date('c') }}" class="text-xs text-gray-400">{{ entry.occurredAt|date('d/m/Y \\à H:i:s') }}</time>
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    </twig:Card>
+</section>
