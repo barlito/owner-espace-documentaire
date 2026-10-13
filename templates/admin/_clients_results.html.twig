@@ -1,7 +1,7 @@
 {# Content of the results frame of the clients page. #}
 {% set total = page.total %}
 
-<div data-announcement="{{ total == 0 ? 'Aucun client ne correspond.' : total ~ (total > 1 ? ' clients' : ' client') ~ (search ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+<div data-filters="{{ {q: search ?? ''}|json_encode }}" data-announcement="{{ total == 0 ? 'Aucun client ne correspond.' : total ~ (total > 1 ? ' clients' : ' client') ~ (search ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
     {% if search %}
         {{ include('admin/_filter_chips.html.twig', {
             chips: [{href: path('admin_clients'), label: 'Nom : « ' ~ search ~ ' »', name: 'Nom du client'}],

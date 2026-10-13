@@ -5,7 +5,7 @@
 {% if filters.clientId %}{% set chips = chips|merge([{href: path('admin_dashboard', filters.without('client').query), label: selectedClient, name: 'Client'}]) %}{% endif %}
 {% if filters.reason %}{% set chips = chips|merge([{href: path('admin_dashboard', filters.without('raison').query), label: filters.reason.label, name: 'Raison'}]) %}{% endif %}
 
-<div data-announcement="{{ total == 0 ? 'Aucune analyse en échec ne correspond.' : total ~ (total > 1 ? ' analyses en échec' : ' analyse en échec') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+<div data-filters="{{ filters.query|json_encode }}" data-announcement="{{ total == 0 ? 'Aucune analyse en échec ne correspond.' : total ~ (total > 1 ? ' analyses en échec' : ' analyse en échec') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
     {{ include('admin/_filter_chips.html.twig', {clear_href: path('admin_dashboard')}) }}
 
     {% if total == 0 %}

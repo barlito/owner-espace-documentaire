@@ -16,7 +16,7 @@
     {% if filters.uncategorized %}{% set chips = chips|merge([{href: path(listRoute, listParams|merge(filters.without('nature').query)), label: 'Non catégorisée', name: 'Nature'}]) %}{% endif %}
     {% if filters.period %}{% set chips = chips|merge([{href: path(listRoute, listParams|merge(filters.without('periode').query)), label: filters.period.label, name: 'Période'}]) %}{% endif %}
 
-    <div data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+    <div data-filters="{{ filters.query|json_encode }}" data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
         <nav aria-label="Pièces par statut" class="mb-4">
             <ul class="flex flex-wrap gap-2">
                 {% for entry in statusCounts|filter(entry => entry.count > 0) %}

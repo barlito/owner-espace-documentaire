@@ -62,18 +62,18 @@ final class AdminDocumentPageTest extends WebTestCase
 
         $crawler = $this->browser->request('GET', $this->path($document));
 
-        $rows = $crawler->filter('#admin-document-attempts-' . $document->getId() . ' tbody tr');
-        $this->assertCount(2, $rows);
-        $latest = $rows->eq(0);
-        $this->assertSame('2 (actuelle)', $this->squash($latest->filter('th')->text()));
-        $this->assertSame('Sophie Laurent', $latest->filter('td')->eq(0)->text());
+        $attempts = $crawler->filter('#admin-document-attempts-' . $document->getId() . ' li[data-attempt]');
+        $this->assertCount(2, $attempts);
+        $latest = $attempts->eq(0);
+        $this->assertSame('Tentative n° 2 (actuelle)', $this->squash($latest->filter('h3')->text()));
+        $this->assertSame('Sophie Laurent', $latest->filter('[data-triggered-by]')->text());
         $this->assertStringContainsString('provider-ref-2', $latest->text());
         $this->assertStringContainsString('Échouée', $latest->text());
         $this->assertStringContainsString('unreadable_file', $latest->text());
-        $first = $rows->eq(1);
-        $this->assertSame('Dépôt', $first->filter('td')->eq(0)->text());
+        $this->assertStringContainsString('Durée', $latest->text());
+        $first = $attempts->eq(1);
+        $this->assertSame('Dépôt', $first->filter('[data-triggered-by]')->text());
         $this->assertStringContainsString('interrupted', $first->text());
-        $this->assertStringContainsString('Durée', $crawler->filter('#admin-document-attempts-' . $document->getId() . ' thead')->text());
     }
 
     public function testTheAdminTimelineNamesTheAdministratorAndTheTechnicalCause(): void
