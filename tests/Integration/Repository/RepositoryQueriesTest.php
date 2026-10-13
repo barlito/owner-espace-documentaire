@@ -7,6 +7,8 @@ namespace App\Tests\Integration\Repository;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;
+use App\Enum\DocumentStatus;
+use App\Enum\FailureReason;
 use App\Repository\ClientRepository;
 use App\Repository\DocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -39,31 +41,74 @@ final class RepositoryQueriesTest extends KernelTestCase
         $this->assertNull($repository->findOneForClient(Uuid::v7(), $martin));
     }
 
-    public function testClientsAreListedWithTheirDocumentCount(): void
+    public function testClientsAreListedWithTheirDocumentsPerStatusFailuresFirst(): void
     {
-        $zeta = $this->client('Zeta Test');
-        $alpha = $this->client('Alpha Test');
+        $quiet = $this->client('Alpha Test');
+        $troubled = $this->client('Zeta Test');
         $empty = $this->client('Beta Test');
-        $this->document($alpha);
-        $this->document($alpha);
-        $this->document($zeta);
+        $this->document($quiet);
+        $this->failedDocument($troubled);
+        $this->failedDocument($troubled);
+        $this->document($troubled);
         $this->em->flush();
         $this->em->clear();
 
-        $rows = self::getContainer()->get(ClientRepository::class)->findAllWithDocumentCount();
-        $counts = [];
-        foreach ($rows as $row) {
-            $counts[$row['client']->getName()] = $row['documentCount'];
+        $page = self::getContainer()->get(ClientRepository::class)->searchWithStatusCounts(null, 1, 100);
+
+        $overviews = [];
+        foreach ($page->items as $overview) {
+            $overviews[$overview->client->getName()] = $overview;
         }
+        $this->assertSame(3, $overviews['Zeta Test']->total());
+        $this->assertSame(2, $overviews['Zeta Test']->count(DocumentStatus::Failed));
+        $this->assertSame(1, $overviews['Zeta Test']->count(DocumentStatus::Pending));
+        $this->assertSame(0, $overviews['Zeta Test']->count(DocumentStatus::Analyzed));
+        $this->assertSame(1, $overviews['Alpha Test']->total());
+        $this->assertSame(0, $overviews[$empty->getName()]->total());
 
-        $this->assertSame(2, $counts['Alpha Test']);
-        $this->assertSame(0, $counts[$empty->getName()]);
-        $this->assertSame(1, $counts['Zeta Test']);
+        $names = array_keys($overviews);
+        $this->assertLessThan(array_search('Alpha Test', $names, true), array_search('Zeta Test', $names, true), 'Failures come first, whatever the name.');
+        $this->assertLessThan(array_search($empty->getName(), $names, true), array_search('Alpha Test', $names, true), 'Then the name.');
+    }
 
-        $names = array_map(static fn (array $row): string => $row['client']->getName(), $rows);
-        $sorted = $names;
-        sort($sorted, \SORT_STRING | \SORT_FLAG_CASE);
-        $this->assertSame($sorted, $names, 'Clients must be ordered by name.');
+    public function testTheClientSearchIgnoresCaseAndAccentsAndPaginates(): void
+    {
+        $this->client('Micro-crèche Test');
+        $this->client('Boulangerie Test');
+        $this->em->flush();
+        $this->em->clear();
+        $repository = self::getContainer()->get(ClientRepository::class);
+
+        $found = $repository->searchWithStatusCounts('CRECHE test', 1, 25);
+
+        $this->assertSame(1, $found->total);
+        $this->assertSame('Micro-crèche Test', $found->items[0]->client->getName());
+        $this->assertSame(0, $repository->searchWithStatusCounts('introuvable', 1, 25)->total);
+        $this->assertSame(0, $repository->searchWithStatusCounts('%', 1, 25)->total, 'Wildcards are searched literally.');
+
+        $first = $repository->searchWithStatusCounts(null, 1, 1);
+        $beyond = $repository->searchWithStatusCounts(null, 999, 1);
+        $this->assertCount(1, $first->items);
+        $this->assertSame($first->pageCount(), $beyond->number, 'An out-of-range page shows the last one.');
+    }
+
+    public function testStatusCountsAreGlobalOrPerClient(): void
+    {
+        $martin = $this->client('Boulangerie Martin');
+        $other = $this->client('Autre Client');
+        $this->failedDocument($martin);
+        $this->document($martin);
+        $this->document($other);
+        $this->em->flush();
+        $this->em->clear();
+        $repository = self::getContainer()->get(DocumentRepository::class);
+
+        $global = array_sum(array_column($repository->countByStatus(), 'count'));
+        $scoped = array_column($repository->countByStatusForClient($this->reload($martin)), 'count');
+
+        $this->assertCount(4, $repository->countByStatus(), 'Every status is present, even with no document.');
+        $this->assertSame([1, 0, 0, 1], $scoped);
+        $this->assertGreaterThanOrEqual(3, $global);
     }
 
     private function reload(Client $client): Client
@@ -88,6 +133,15 @@ final class RepositoryQueriesTest extends KernelTestCase
         $document = new Document($client, $uploader, 'scan.pdf', uniqid('key-'), 'application/pdf', 1024, str_repeat('a', 64));
         $this->em->persist($uploader);
         $this->em->persist($document);
+
+        return $document;
+    }
+
+    private function failedDocument(Client $client): Document
+    {
+        $document = $this->document($client);
+        $document->startAnalysis('provider-ref');
+        $document->failAnalysis(FailureReason::Unknown);
 
         return $document;
     }
