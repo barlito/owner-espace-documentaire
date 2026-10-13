@@ -169,20 +169,21 @@ Les doublons et messages tardifs sont sans effet : chaque message porte l'identi
 
 ### Réconciliation
 
-Un message peut se perdre (arrêt brutal, message mis en file d'échec après ses 3 reprises), un worker peut mourir en cours de traitement. Le Scheduler lance donc `ReconcileAnalyses` toutes les minutes (aussi disponible à la main : `make console c="app:analysis:reconcile"`) :
+Un message envoyé ne peut pas se perdre : il est écrit dans la même transaction que le document (voir plus bas). Restent trois cas, chacun traité sans minuterie sur les documents en attente, pour qu'un document qui attend simplement son tour dans une file chargée ne soit jamais renvoyé :
 
-- une tentative « en cours » depuis plus de `ANALYSIS_STALE_AFTER` secondes passe en échec « interrompu » ;
-- un document « en attente » jamais mis en file, ou dont le message date de plus de `ANALYSIS_REQUEUE_AFTER` secondes, est remis en file ; un document qui attend simplement son tour n'est donc pas renvoyé à chaque passage ;
-- après `ANALYSIS_MAX_REQUEUES` remises en file sans démarrage, la tentative est abandonnée (échec, cause inconnue) au lieu de boucler indéfiniment sur un message qui plante toujours ; un administrateur peut la relancer (nouvelle tentative, compteur à zéro) ;
-- au plus `ANALYSIS_RECONCILE_BATCH` documents par type et par passage, les plus anciens d'abord ; un index partiel (`idx_document_unfinished`) évite de parcourir tout l'historique.
+- **un message qui plante à chaque fois** (bug, donnée corrompue) : Messenger le rejoue 3 fois avec un délai croissant, puis l'abandonne. À cet instant, `AnalysisFailureListener` passe la tentative en échec (cause inconnue) : le document apparaît parmi les échecs, un administrateur peut le relancer. Le message reste consultable dans la file `failed` (`messenger:failed:show`) ; le rejouer plus tard est sans effet, la tentative n'étant plus la tentative courante ;
+- **un document créé sans message** (fixtures de démonstration) : le Scheduler lance `ReconcileAnalyses` toutes les minutes (aussi disponible à la main : `make console c="app:analysis:reconcile"`), qui met en file les tentatives en attente jamais envoyées (`queued_at` vide) ;
+- **un worker mort en plein traitement**, ou un message de fin perdu : la même réconciliation passe en échec « interrompu » une tentative « en cours » depuis plus de `ANALYSIS_STALE_AFTER` secondes.
+
+Au plus `ANALYSIS_RECONCILE_BATCH` documents par type et par passage, les plus anciens d'abord ; un index partiel (`idx_document_unfinished`) évite de parcourir tout l'historique.
 
 | Variable | Défaut | Rôle |
 | --- | --- | --- |
 | `ANALYSIS_RECONCILE_INTERVAL` | `1 minute` | Fréquence de la réconciliation |
 | `ANALYSIS_STALE_AFTER` | `600` | Secondes avant d'interrompre une analyse en cours. Doit dépasser la plus longue analyse simulée (120 s) : sinon le worker refuse de démarrer |
-| `ANALYSIS_REQUEUE_AFTER` | `300` | Secondes avant de remettre un message en file |
-| `ANALYSIS_MAX_REQUEUES` | `3` | Remises en file avant abandon |
 | `ANALYSIS_RECONCILE_BATCH` | `100` | Documents traités par type et par passage |
+
+**Évolution possible : la base indisponible au moment de l'abandon.** Si la base tombe pendant que Messenger abandonne un message, le listener ne peut pas écrire l'échec non plus : le document reste « en attente » (ou « en cours », et la réconciliation finira par l'interrompre). Une commande pourrait chercher les documents en attente depuis plusieurs heures pour alerter l'équipe ou les remettre en file automatiquement. Elle n'est pas faite : le cas suppose une panne de la base, et le message reste de toute façon dans la file `failed`.
 
 **À faire évoluer : plusieurs workers.** Le Scheduler tourne dans chaque worker : avec plusieurs workers, chacun lance sa propre réconciliation, et plusieurs passages peuvent viser le même document en même temps. C'est sans conséquence (chaque document est verrouillé puis revérifié avant d'être modifié, le second passage ne fait donc rien), mais c'est du travail en double et de l'attente sur les verrous. Pour passer à plusieurs workers, il faudra n'exécuter la réconciliation qu'une fois par intervalle : un verrou sur le schedule (`Schedule::lock()` avec le composant Lock), ou un worker dédié au seul transport `scheduler_analysis`.
 

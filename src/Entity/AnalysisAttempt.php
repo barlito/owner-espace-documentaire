@@ -52,18 +52,13 @@ class AnalysisAttempt
     private \DateTimeImmutable $requestedAt;
 
     /**
-     * When the analysis message was last sent. Lets the reconciliation tell a lost message (never queued, or queued
-     * long ago) from a document that is simply waiting its turn.
+     * When the analysis message was sent. Null only for an attempt whose message was never sent (demo fixtures,
+     * data from before the queue existed): the reconciliation queues those. A sent message cannot be lost, since it is
+     * written in the same transaction as the attempt; a message Messenger gives up on fails the attempt instead
+     * (see AnalysisFailureListener).
      */
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $queuedAt = null;
-
-    /**
-     * How many times the reconciliation queued this attempt again. Capped by the reconciliation, so that a message
-     * that always crashes does not come back forever. A retry is a new attempt and starts again at 0.
-     */
-    #[ORM\Column(options: ['default' => 0])]
-    private int $requeueCount = 0;
 
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
@@ -92,13 +87,10 @@ class AnalysisAttempt
     /**
      * @internal only Document may drive an attempt, so that status and timeline stay in sync
      */
-    public function markQueued(bool $requeue): void
+    public function markQueued(): void
     {
         $this->assertStatus(AttemptStatus::Pending);
         $this->queuedAt = now();
-        if ($requeue) {
-            ++$this->requeueCount;
-        }
     }
 
     /**
@@ -171,11 +163,6 @@ class AnalysisAttempt
     public function getQueuedAt(): ?\DateTimeImmutable
     {
         return $this->queuedAt;
-    }
-
-    public function getRequeueCount(): int
-    {
-        return $this->requeueCount;
     }
 
     public function getStartedAt(): ?\DateTimeImmutable

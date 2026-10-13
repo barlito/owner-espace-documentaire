@@ -19,12 +19,9 @@ final readonly class AnalysisQueue
     {
     }
 
-    /**
-     * @param bool $requeue true when the reconciliation sends it again: counted, to stop at some point
-     */
-    public function enqueue(Document $document, bool $requeue = false): void
+    public function enqueue(Document $document): void
     {
-        $document->markAnalysisQueued($requeue);
+        $document->markAnalysisQueued();
 
         $this->bus->dispatch(new AnalyzeDocument($document->getId(), $document->getCurrentAttempt()->getId()));
     }

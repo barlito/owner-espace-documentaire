@@ -81,18 +81,17 @@ class DocumentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Pending attempts whose message was never sent or was sent before the threshold, oldest first.
+     * Pending attempts whose message was never sent, oldest first.
      *
      * @return list<array{documentId: Uuid, attemptId: Uuid}>
      */
-    public function findPendingToRequeue(\DateTimeImmutable $queuedBefore, int $limit): array
+    public function findNeverQueued(int $limit): array
     {
         return $this->identifiers($this->createQueryBuilder('d')
             ->join('d.currentAttempt', 'a')
             ->andWhere('d.status = :status')
-            ->andWhere('a.queuedAt IS NULL OR a.queuedAt < :threshold')
+            ->andWhere('a.queuedAt IS NULL')
             ->setParameter('status', DocumentStatus::Pending)
-            ->setParameter('threshold', $queuedBefore, Types::DATETIMETZ_IMMUTABLE)
             ->orderBy('a.requestedAt', 'ASC')
             ->setMaxResults($limit));
     }

@@ -28,9 +28,7 @@ services:
         arguments:
             $interval: '%env(ANALYSIS_RECONCILE_INTERVAL)%'
             $staleAfter: '%env(int:ANALYSIS_STALE_AFTER)%'
-            $requeueAfter: '%env(int:ANALYSIS_REQUEUE_AFTER)%'
             $batch: '%env(int:ANALYSIS_RECONCILE_BATCH)%'
-            $maxRequeues: '%env(int:ANALYSIS_MAX_REQUEUES)%'
 
     # Login throttling keyed on the IP alone (any account), see config/packages/rate_limiter.yaml.
     app.login_rate_limiter:

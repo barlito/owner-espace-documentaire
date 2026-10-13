@@ -143,11 +143,11 @@ class Document
     /**
      * Records that the analysis message was sent. Not a timeline event: it is plumbing, not something that happened to the document.
      */
-    public function markAnalysisQueued(bool $requeue = false): void
+    public function markAnalysisQueued(): void
     {
         $this->assertStatus('markAnalysisQueued', DocumentStatus::Pending);
 
-        $this->getCurrentAttempt()->markQueued($requeue);
+        $this->getCurrentAttempt()->markQueued();
     }
 
     public function startAnalysis(): AnalysisAttempt
