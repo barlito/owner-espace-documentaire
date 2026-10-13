@@ -42,6 +42,17 @@ final class ClientDocumentListTest extends WebTestCase
         $this->assertSame(['Bilan Paul.pdf'], $this->names($this->browser->request('GET', '/espace')));
     }
 
+    public function testEachRowOpensTheDocumentPageOutsideTheResultsFrame(): void
+    {
+        $document = $this->document($this->paul, 'Bilan Paul.pdf');
+
+        $link = $this->browser->request('GET', '/espace')->filter('#document-' . $document->getId() . ' a');
+
+        $this->assertSame('/espace/pieces/' . $document->getId(), $link->attr('href'));
+        // Without it Turbo would look for the results frame in the document page and show "Content missing".
+        $this->assertSame('_top', $link->attr('data-turbo-frame'));
+    }
+
     public function testSearchIgnoresCaseAndAccents(): void
     {
         $this->document($this->paul, 'Relevé bancaire mars.pdf');
