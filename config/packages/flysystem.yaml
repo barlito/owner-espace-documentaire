@@ -1,0 +1,13 @@
+# Uploaded documents live outside public/: they are only reachable through application code.
+flysystem:
+    storages:
+        documents.storage:
+            adapter: 'local'
+            options:
+                directory: '%kernel.project_dir%/var/storage/documents'
+
+when@test:
+    flysystem:
+        storages:
+            documents.storage:
+                adapter: 'memory'

@@ -1,0 +1,8 @@
+<option value="">À déterminer</option>
+{% for group in groups %}
+    <optgroup label="{{ group.family.label }}">
+        {% for type in group.types %}
+            <option value="{{ type.value }}">{{ type.label }}</option>
+        {% endfor %}
+    </optgroup>
+{% endfor %}

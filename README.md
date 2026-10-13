@@ -71,6 +71,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Front | **AssetMapper + Stimulus + Turbo** | Imposés par le sujet (Turbo, Stimulus) ; AssetMapper est le défaut de Symfony et évite toute chaîne Node. C'est aussi la stack du site d'OWNER. |
 | CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
+| Stockage | **Flysystem** (`league/flysystem-bundle`) | Les fichiers passent par une abstraction : disque local aujourd'hui (`var/storage/documents`, hors de `public/`), adaptateur mémoire en test, un bucket S3 demain sans toucher au code métier. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 
 ## Modèle de données
@@ -116,6 +117,15 @@ Chaque changement passe par une méthode de `Document` (`startAnalysis`, `comple
 - **Garanties en base** : contraintes `CHECK` (cohérence de la période, valeurs de statut, **une tentative échouée ne porte jamais de résultat** et une tentative réussie en porte toujours un), index unique partiel interdisant **plus d'une tentative non terminée par document** (une relance répétée ne peut pas lancer deux traitements), unicité du numéro de tentative, index partiel sur les documents en échec. Elles sont écrites dans les migrations ; la base de test est donc construite par les migrations, jamais par `schema:create`.
 - **Pas de suppression de document dans le MVP** : l'historique doit rester fiable et conservé. Une suppression passerait d'abord par une suppression logique (soft delete), avant toute suppression définitive.
 - Le code est en anglais ; l'interface et les messages sont en français.
+
+## Dépôt de documents
+
+- **Formats acceptés** : PDF, JPEG, PNG, HEIC (photos d'iPhone, acceptées volontairement : l'aperçu ou l'analyse pourront ne pas les gérer), Word `.docx`, Excel `.xlsx`. **20 Mo par fichier, 20 fichiers par envoi**, fichiers vides refusés. Tout est défini dans `App\Upload\UploadPolicy` (validation, contrôleurs, gabarit et contrôleur Stimulus lisent la même source).
+- **Le type MIME est détecté côté serveur, à partir du contenu** (fileinfo), jamais d'après ce que déclare le navigateur : un `.txt` renommé en `.pdf` est refusé. Certains `.docx` / `.xlsx` (générés par des outils tiers) sont détectés comme un simple `application/zip` : dans ce cas seulement, et si l'extension est `.docx` / `.xlsx`, la structure de l'archive est vérifiée (`[Content_Types].xml` + dossier `word/` ou `xl/`) avant de leur attribuer le type OOXML. Un zip quelconque reste refusé.
+- **Stockage** : clé `{clientId}/{uuidv7}`, sans extension ni partie contrôlée par l'utilisateur. Le nom d'origine n'existe qu'en base, pour l'affichage (nom de base uniquement, 255 caractères max). Le fichier est écrit en flux et son SHA-256 est calculé en flux : il n'est jamais chargé en mémoire.
+- **Atomicité** : le fichier est écrit d'abord, puis le document est enregistré. Si l'écriture en base échoue, le fichier est supprimé (compensation) : il n'existe jamais de document sans fichier. Inversement, un arrêt brutal du processus entre les deux étapes peut laisser un fichier orphelin ; c'est acceptable pour un MVP et nettoyable plus tard par une commande qui compare le stockage à la base.
+- **Interface** : un envoi = une requête par fichier (progression par fichier, un refus n'empêche pas les autres), deux envois en parallèle. Sans JavaScript, le formulaire reste fonctionnel (`files[]` en une seule requête, `post_max_size = 100M`), et chaque fichier est traité indépendamment.
+- Les limites PHP sont dans `.docker/php/app.ini` (`upload_max_filesize = 20M`, `post_max_size = 100M`, `max_file_uploads = 20`).
 
 ## Direction artistique
 
