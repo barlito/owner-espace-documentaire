@@ -24,3 +24,13 @@
 <turbo-stream action="update" target="live-status">
     <template>{{ document.originalFilename }} : {{ created ? 'pièce reçue' : document.status.announcement }}.</template>
 </turbo-stream>
+
+{# Document page (client): status/analysis block and timeline of the document being viewed #}
+{% if not created %}
+    <turbo-stream action="replace" target="document-page-status-{{ document.id }}">
+        <template>{{ include('client/document/_status.html.twig') }}</template>
+    </turbo-stream>
+    <turbo-stream action="replace" target="document-page-timeline-{{ document.id }}">
+        <template>{{ include('client/document/_timeline.html.twig') }}</template>
+    </turbo-stream>
+{% endif %}
