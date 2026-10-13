@@ -34,6 +34,9 @@ jobs:
             - name: Tests (PHPUnit)
               run: make test
 
+            - name: Production container compiles
+              run: docker compose exec -T -e APP_ENV=prod -e APP_DEBUG=0 php sh -c 'bin/console cache:warmup && bin/console lint:container'
+
             - name: Stack logs
               if: failure()
               run: docker compose logs
