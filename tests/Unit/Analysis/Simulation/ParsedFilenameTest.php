@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Analysis\Simulation;
 
-use App\Analysis\Simulation\FilenameHints;
+use App\Analysis\Simulation\ParsedFilename;
 use App\Enum\DocumentType;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-final class FilenameHintsTest extends TestCase
+final class ParsedFilenameTest extends TestCase
 {
     public function testKeywordsIgnoreCaseAccentsAndSeparators(): void
     {
-        $hints = new FilenameHints('Relevé_ÉCHEC illisible.PDF');
+        $filename = new ParsedFilename('Relevé_ÉCHEC illisible.PDF');
 
-        $this->assertTrue($hints->has('echec'));
-        $this->assertTrue($hints->has('illisible'));
-        $this->assertFalse($hints->has('lent'));
+        $this->assertTrue($filename->has('echec'));
+        $this->assertTrue($filename->has('illisible'));
+        $this->assertFalse($filename->has('lent'));
     }
 
     public function testKeywordsMatchWholeWordsOnly(): void
     {
-        $this->assertFalse(new FilenameHints('excellent-travail.pdf')->has('lent'));
-        $this->assertTrue(new FilenameHints('analyse-lent.pdf')->has('lent'));
+        $this->assertFalse(new ParsedFilename('excellent-travail.pdf')->has('lent'));
+        $this->assertTrue(new ParsedFilename('analyse-lent.pdf')->has('lent'));
     }
 
     /**
@@ -47,7 +47,7 @@ final class FilenameHintsTest extends TestCase
     #[DataProvider('typeGuesses')]
     public function testTypeIsGuessedFromTheName(string $filename, ?DocumentType $expected): void
     {
-        $this->assertSame($expected, new FilenameHints($filename)->guessType());
+        $this->assertSame($expected, new ParsedFilename($filename)->guessType());
     }
 
     /**
@@ -69,7 +69,7 @@ final class FilenameHintsTest extends TestCase
     #[DataProvider('periods')]
     public function testPeriodIsParsedFromTheName(string $filename, bool $yearly, ?string $start, ?string $end): void
     {
-        $period = new FilenameHints($filename)->period($yearly);
+        $period = new ParsedFilename($filename)->period($yearly);
 
         $this->assertSame($start, ($period[0] ?? null)?->format('Y-m-d'));
         $this->assertSame($end, ($period[1] ?? null)?->format('Y-m-d'));

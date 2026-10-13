@@ -39,43 +39,43 @@ final readonly class AnalysisSimulator
     {
     }
 
-    public function plan(Document $document): AnalysisPlan
+    public function scenario(Document $document): SimulatedScenario
     {
-        $hints = new FilenameHints($document->getOriginalFilename());
-        $long = $hints->has('lent') || $hints->has('long');
+        $filename = new ParsedFilename($document->getOriginalFilename());
+        $long = $filename->has('lent') || $filename->has('long');
 
         if ($document->getCurrentAttempt()->getNumber() > 1) {
             $unreadable = FailureReason::UnreadableFile === $this->previousFailure($document);
 
-            return new AnalysisPlan($this->delay($long), $unreadable ? FailureReason::UnreadableFile : null);
+            return new SimulatedScenario($this->delay($long), $unreadable ? FailureReason::UnreadableFile : null);
         }
 
-        if ($hints->has('illisible')) {
-            return new AnalysisPlan($this->delay(false), FailureReason::UnreadableFile);
+        if ($filename->has('illisible')) {
+            return new SimulatedScenario($this->delay(false), FailureReason::UnreadableFile);
         }
-        if ($hints->has('echec')) {
-            return new AnalysisPlan($this->delay(false), FailureReason::Unknown);
+        if ($filename->has('echec')) {
+            return new SimulatedScenario($this->delay(false), FailureReason::Unknown);
         }
         if ($long) {
-            return new AnalysisPlan($this->delay(true));
+            return new SimulatedScenario($this->delay(true));
         }
 
         $draw = $this->random->getInt(1, 100);
         if ($draw <= self::FAST_SUCCESS_PERCENT) {
-            return new AnalysisPlan($this->delay(false));
+            return new SimulatedScenario($this->delay(false));
         }
         if ($draw <= self::FAST_SUCCESS_PERCENT + self::LONG_SUCCESS_PERCENT) {
-            return new AnalysisPlan($this->delay(true));
+            return new SimulatedScenario($this->delay(true));
         }
 
-        return new AnalysisPlan($this->delay(false), self::RANDOM_FAILURES[$this->random->getInt(0, \count(self::RANDOM_FAILURES) - 1)]);
+        return new SimulatedScenario($this->delay(false), self::RANDOM_FAILURES[$this->random->getInt(0, \count(self::RANDOM_FAILURES) - 1)]);
     }
 
     public function result(Document $document): AnalysisResult
     {
-        $hints = new FilenameHints($document->getOriginalFilename());
-        $type = $document->getType() ?? $hints->guessType() ?? DocumentType::Other;
-        $period = $this->period($document, $hints, $type);
+        $filename = new ParsedFilename($document->getOriginalFilename());
+        $type = $document->getType() ?? $filename->guessType() ?? DocumentType::Other;
+        $period = $this->period($document, $filename, $type);
 
         return new AnalysisResult(
             $type,
@@ -107,7 +107,7 @@ final readonly class AnalysisSimulator
      *
      * @return array{\DateTimeImmutable, \DateTimeImmutable}|null
      */
-    private function period(Document $document, FilenameHints $hints, DocumentType $type): ?array
+    private function period(Document $document, ParsedFilename $filename, DocumentType $type): ?array
     {
         $yearly = match ($type) {
             DocumentType::AnnualAccounts, DocumentType::TaxNotice => true,
@@ -121,9 +121,9 @@ final readonly class AnalysisSimulator
         $uploadedAt = $document->getUploadedAt();
         $previousMonth = $uploadedAt->modify('first day of last month');
 
-        return $hints->period($yearly) ?? ($yearly
-            ? FilenameHints::range((int) $uploadedAt->format('Y') - 1, 1, 12)
-            : FilenameHints::range((int) $previousMonth->format('Y'), (int) $previousMonth->format('n'), (int) $previousMonth->format('n')));
+        return $filename->period($yearly) ?? ($yearly
+            ? ParsedFilename::range((int) $uploadedAt->format('Y') - 1, 1, 12)
+            : ParsedFilename::range((int) $previousMonth->format('Y'), (int) $previousMonth->format('n'), (int) $previousMonth->format('n')));
     }
 
     /**

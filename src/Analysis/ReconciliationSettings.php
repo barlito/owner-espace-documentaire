@@ -10,7 +10,7 @@ use App\Analysis\Simulation\AnalysisSimulator;
  * Reconciliation thresholds, from the environment (see .env).
  * Built when the worker boots (the schedule needs the interval), so a bad configuration stops it right away.
  */
-final readonly class ReconcileSettings
+final readonly class ReconciliationSettings
 {
     /**
      * @param string $interval   how often the reconciliation runs

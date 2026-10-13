@@ -24,7 +24,7 @@ services:
 
     Random\Randomizer: ~
 
-    App\Analysis\ReconcileSettings:
+    App\Analysis\ReconciliationSettings:
         arguments:
             $interval: '%env(ANALYSIS_RECONCILE_INTERVAL)%'
             $staleAfter: '%env(int:ANALYSIS_STALE_AFTER)%'

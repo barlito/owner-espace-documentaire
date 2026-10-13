@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\EventListener;
 
 use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
+use App\Message\FinishAnalysis;
+use App\Message\StartAnalysis;
 use App\Repository\DocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -20,7 +22,7 @@ use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
  * the handlers ignore an attempt that is no longer current.
  */
 #[AsEventListener]
-final readonly class AnalysisFailureListener
+final readonly class FailAnalysisOnGivenUpMessageListener
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -33,11 +35,11 @@ final readonly class AnalysisFailureListener
     public function __invoke(WorkerMessageFailedEvent $event): void
     {
         $message = $event->getEnvelope()->getMessage();
-        if ($event->willRetry() || (!$message instanceof AnalyzeDocument && !$message instanceof CompleteAnalysis)) {
+        if ($event->willRetry() || (!$message instanceof StartAnalysis && !$message instanceof FinishAnalysis)) {
             return;
         }
 
-        $expected = $message instanceof AnalyzeDocument ? DocumentStatus::Pending : DocumentStatus::Processing;
+        $expected = $message instanceof StartAnalysis ? DocumentStatus::Pending : DocumentStatus::Processing;
         $context = ['document' => $message->documentId->toRfc4122(), 'attempt' => $message->attemptId->toRfc4122()];
 
         try {

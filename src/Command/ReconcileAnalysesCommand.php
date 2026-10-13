@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Command;
 
+use App\Message\ReconcileAnalyses;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -11,7 +12,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 
 #[AsCommand(name: 'app:analysis:reconcile', description: 'Runs the analysis reconciliation once: fails stuck analyses and queues the ones never sent')]
-final class ReconcileCommand extends Command
+final class ReconcileAnalysesCommand extends Command
 {
     public function __construct(private readonly MessageBusInterface $bus)
     {

@@ -28,8 +28,8 @@ framework:
                     - doctrine_transaction
 
         routing:
-            'App\Analysis\AnalyzeDocument': async
-            'App\Analysis\CompleteAnalysis': async
+            'App\Message\StartAnalysis': async
+            'App\Message\FinishAnalysis': async
 
 when@test:
     framework:

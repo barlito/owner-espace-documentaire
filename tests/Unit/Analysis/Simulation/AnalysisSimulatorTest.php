@@ -29,27 +29,27 @@ final class AnalysisSimulatorTest extends TestCase
 
     public function testUnreadableKeywordFailsFast(): void
     {
-        $plan = $this->simulator->plan($this->document('Relevé ILLISIBLE.pdf'));
+        $scenario = $this->simulator->scenario($this->document('Relevé ILLISIBLE.pdf'));
 
-        $this->assertSame(FailureReason::UnreadableFile, $plan->failure);
-        $this->assertFastDelay($plan->delayMs);
+        $this->assertSame(FailureReason::UnreadableFile, $scenario->failure);
+        $this->assertFastDelay($scenario->delayMs);
     }
 
     public function testFailureKeywordIgnoresAccents(): void
     {
-        $plan = $this->simulator->plan($this->document('Échec.pdf'));
+        $scenario = $this->simulator->scenario($this->document('Échec.pdf'));
 
-        $this->assertSame(FailureReason::Unknown, $plan->failure);
+        $this->assertSame(FailureReason::Unknown, $scenario->failure);
     }
 
     public function testSlowKeywordsSucceedAfterALongDelay(): void
     {
         foreach (['facture-lent.pdf', 'Scan LONG.pdf'] as $filename) {
-            $plan = $this->simulator->plan($this->document($filename));
+            $scenario = $this->simulator->scenario($this->document($filename));
 
-            $this->assertNull($plan->failure);
-            $this->assertGreaterThanOrEqual(AnalysisSimulator::LONG_DELAY_MIN_MS, $plan->delayMs);
-            $this->assertLessThanOrEqual(AnalysisSimulator::LONG_DELAY_MAX_MS, $plan->delayMs);
+            $this->assertNull($scenario->failure);
+            $this->assertGreaterThanOrEqual(AnalysisSimulator::LONG_DELAY_MIN_MS, $scenario->delayMs);
+            $this->assertLessThanOrEqual(AnalysisSimulator::LONG_DELAY_MAX_MS, $scenario->delayMs);
         }
     }
 
@@ -60,11 +60,11 @@ final class AnalysisSimulatorTest extends TestCase
         $reasons = [];
 
         for ($i = 0; $i < 4000; ++$i) {
-            $plan = $this->simulator->plan($document);
-            if (null !== $plan->failure) {
+            $scenario = $this->simulator->scenario($document);
+            if (null !== $scenario->failure) {
                 ++$failed;
-                $reasons[$plan->failure->value] = true;
-            } elseif ($plan->delayMs <= AnalysisSimulator::FAST_DELAY_MAX_MS) {
+                $reasons[$scenario->failure->value] = true;
+            } elseif ($scenario->delayMs <= AnalysisSimulator::FAST_DELAY_MAX_MS) {
                 ++$fast;
             } else {
                 ++$long;
@@ -81,25 +81,25 @@ final class AnalysisSimulatorTest extends TestCase
     {
         $document = $this->retriedDocument('echec.pdf', FailureReason::Unknown);
 
-        $plan = $this->simulator->plan($document);
+        $scenario = $this->simulator->scenario($document);
 
-        $this->assertNull($plan->failure);
-        $this->assertFastDelay($plan->delayMs);
+        $this->assertNull($scenario->failure);
+        $this->assertFastDelay($scenario->delayMs);
     }
 
     public function testARetryAfterAnUnreadableFileFailsAgain(): void
     {
-        $plan = $this->simulator->plan($this->retriedDocument('scan.pdf', FailureReason::UnreadableFile));
+        $scenario = $this->simulator->scenario($this->retriedDocument('scan.pdf', FailureReason::UnreadableFile));
 
-        $this->assertSame(FailureReason::UnreadableFile, $plan->failure);
+        $this->assertSame(FailureReason::UnreadableFile, $scenario->failure);
     }
 
     public function testARetryKeepsTheSlowKeyword(): void
     {
-        $plan = $this->simulator->plan($this->retriedDocument('scan-lent.pdf', FailureReason::Interrupted));
+        $scenario = $this->simulator->scenario($this->retriedDocument('scan-lent.pdf', FailureReason::Interrupted));
 
-        $this->assertNull($plan->failure);
-        $this->assertGreaterThanOrEqual(AnalysisSimulator::LONG_DELAY_MIN_MS, $plan->delayMs);
+        $this->assertNull($scenario->failure);
+        $this->assertGreaterThanOrEqual(AnalysisSimulator::LONG_DELAY_MIN_MS, $scenario->delayMs);
     }
 
     public function testResultKeepsTheClientTypeAndHasTheDocumentedShape(): void

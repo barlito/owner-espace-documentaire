@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\MessageHandler;
 
 use App\Analysis\Simulation\AnalysisSimulator;
 use App\Enum\DocumentStatus;
+use App\Message\FinishAnalysis;
 use App\Repository\DocumentRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final readonly class CompleteAnalysisHandler
+final readonly class FinishAnalysisHandler
 {
     public function __construct(
         private DocumentRepository $documents,
@@ -20,7 +21,7 @@ final readonly class CompleteAnalysisHandler
     ) {
     }
 
-    public function __invoke(CompleteAnalysis $message): void
+    public function __invoke(FinishAnalysis $message): void
     {
         $document = $this->documents->findForUpdate($message->documentId, $message->attemptId, DocumentStatus::Processing);
         if (null === $document) {

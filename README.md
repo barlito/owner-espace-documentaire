@@ -149,9 +149,9 @@ Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement
 
 ### Déroulé
 
-1. **Dépôt** : le document et le message `AnalyzeDocument` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
-2. **Démarrage** : le worker verrouille le document (`SELECT … FOR UPDATE`), le passe en « en cours » et décide du scénario. Il n'y a **aucun `sleep()`** : le temps de traitement simulé est le *délai* du message suivant, `CompleteAnalysis`, ce qui laisse le worker libre pour les autres documents.
-3. **Fin** : `CompleteAnalysis` enregistre le résultat (JSON : type détecté, période, résumé, champs, confiance) ou l'échec. Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse.
+1. **Dépôt** : le document et le message `StartAnalysis` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
+2. **Démarrage** : le worker verrouille le document (`SELECT … FOR UPDATE`), le passe en « en cours » et décide du scénario. Il n'y a **aucun `sleep()`** : le temps de traitement simulé est le *délai* du message suivant, `FinishAnalysis`, ce qui laisse le worker libre pour les autres documents.
+3. **Fin** : `FinishAnalysis` enregistre le résultat (JSON : type détecté, période, résumé, champs, confiance) ou l'échec. Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse.
 
 Les doublons et messages tardifs sont sans effet : chaque message porte l'identifiant de la tentative, et le handler ignore le message si le document n'est plus dans l'état attendu.
 
@@ -171,7 +171,7 @@ Les doublons et messages tardifs sont sans effet : chaque message porte l'identi
 
 Un message envoyé ne peut pas se perdre : il est écrit dans la même transaction que le document (voir plus bas). Restent trois cas, chacun traité sans minuterie sur les documents en attente, pour qu'un document qui attend simplement son tour dans une file chargée ne soit jamais renvoyé :
 
-- **un message qui plante à chaque fois** (bug, donnée corrompue) : Messenger le rejoue 3 fois avec un délai croissant, puis l'abandonne. À cet instant, `AnalysisFailureListener` passe la tentative en échec (cause inconnue) : le document apparaît parmi les échecs, un administrateur peut le relancer. Le message reste consultable dans la file `failed` (`messenger:failed:show`) ; le rejouer plus tard est sans effet, la tentative n'étant plus la tentative courante ;
+- **un message qui plante à chaque fois** (bug, donnée corrompue) : Messenger le rejoue 3 fois avec un délai croissant, puis l'abandonne. À cet instant, `FailAnalysisOnGivenUpMessageListener` passe la tentative en échec (cause inconnue) : le document apparaît parmi les échecs, un administrateur peut le relancer. Le message reste consultable dans la file `failed` (`messenger:failed:show`) ; le rejouer plus tard est sans effet, la tentative n'étant plus la tentative courante ;
 - **un document créé sans message** (fixtures de démonstration) : le Scheduler lance `ReconcileAnalyses` toutes les minutes (aussi disponible à la main : `make console c="app:analysis:reconcile"`), qui met en file les tentatives en attente jamais envoyées (`queued_at` vide) ;
 - **un worker mort en plein traitement**, ou un message de fin perdu : la même réconciliation passe en échec « interrompu » une tentative « en cours » depuis plus de `ANALYSIS_STALE_AFTER` secondes.
 
@@ -252,5 +252,21 @@ config/         Configuration Symfony
 src/            Code applicatif
 templates/      Templates Twig (components/ : composants d'interface)
 tests/          Tests PHPUnit
-compose.yaml    Stack locale (php + database)
+compose.yaml    Stack locale (php, worker, database)
 ```
+
+### Organisation du code
+
+Une seule règle : **ce que le framework appelle va dans les dossiers standard de Symfony, le code métier qu'ils appellent est rangé par fonctionnalité.**
+
+```
+src/
+├── Command/  Controller/  EventListener/  Message/  MessageHandler/  Scheduler/   points d'entrée
+├── Entity/  Enum/  Exception/  Repository/                                       modèle et persistance
+├── Security/  Twig/  DataFixtures/
+├── Upload/      métier du dépôt : politique, détection du format, enregistrement
+└── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
+    └── Simulation/   la simulation de l'analyse (scénario, lecture du nom de fichier)
+```
+
+Ce sont les dossiers que créent les générateurs de Symfony (`make:message`, `make:command`…) : un développeur Symfony s'y retrouve sans explication. Une architecture hexagonale (domaine sans dépendance au framework, ports et adapters) a été écartée : pour un MVP avec une seule base, un seul transport et un seul stockage, elle multiplierait les fichiers sans bénéfice, au détriment de la facilité de reprise. Les règles métier restent malgré tout isolées : dans les entités (transitions de `Document`) et dans `Upload/` et `Analysis/`, sans dépendance aux contrôleurs ni aux handlers.

@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\MessageHandler;
 
+use App\Analysis\AnalysisQueue;
+use App\Analysis\ReconciliationSettings;
 use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
+use App\Message\ReconcileAnalyses;
 use App\Repository\DocumentRepository;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -15,7 +18,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Brings back to a consistent state what messaging alone cannot guarantee: a crashed worker or a lost delayed
  * message leaves an attempt processing forever, and documents created without the queue (demo fixtures) have no
  * message at all. A sent message cannot be lost otherwise: it is written in the same transaction as the document,
- * and a message Messenger gives up on fails its attempt right away (AnalysisFailureListener). So there is no timer
+ * and a message Messenger gives up on fails its attempt right away (FailAnalysisOnGivenUpMessageListener). So there is no timer
  * on pending documents: one waiting in a long queue is never sent twice.
  * Idempotent and safe to run concurrently: every document is locked and re-checked before being touched.
  */
@@ -25,7 +28,7 @@ final readonly class ReconcileAnalysesHandler
     public function __construct(
         private DocumentRepository $documents,
         private AnalysisQueue $queue,
-        private ReconcileSettings $settings,
+        private ReconciliationSettings $settings,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {

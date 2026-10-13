@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Analysis;
+namespace App\Tests\Integration;
 
 use App\Entity\Client;
 use App\Entity\Document;

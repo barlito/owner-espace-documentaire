@@ -13,7 +13,7 @@ use function Symfony\Component\String\u;
  * Names are lowercased, stripped of accents and split on every non-alphanumeric character,
  * so "Bulletin de Salaire - Mars 2026.pdf" becomes "bulletin-de-salaire-mars-2026-pdf".
  */
-final readonly class FilenameHints
+final readonly class ParsedFilename
 {
     /** First match wins: the most specific keywords come first. */
     private const array TYPE_KEYWORDS = [

@@ -9,7 +9,7 @@ use App\Enum\FailureReason;
 /**
  * Decided up front by the simulator: how long the simulated work lasts and how it ends.
  */
-final readonly class AnalysisPlan
+final readonly class SimulatedScenario
 {
     public function __construct(
         public int $delayMs,

@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\MessageHandler;
 
 use App\Analysis\Simulation\AnalysisSimulator;
 use App\Enum\DocumentStatus;
+use App\Message\FinishAnalysis;
+use App\Message\StartAnalysis;
 use App\Repository\DocumentRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -17,7 +19,7 @@ use Symfony\Component\Messenger\Stamp\DelayStamp;
  * not a sleep: the worker stays free for other documents.
  */
 #[AsMessageHandler]
-final readonly class AnalyzeDocumentHandler
+final readonly class StartAnalysisHandler
 {
     public function __construct(
         private DocumentRepository $documents,
@@ -27,7 +29,7 @@ final readonly class AnalyzeDocumentHandler
     ) {
     }
 
-    public function __invoke(AnalyzeDocument $message): void
+    public function __invoke(StartAnalysis $message): void
     {
         $document = $this->documents->findForUpdate($message->documentId, $message->attemptId, DocumentStatus::Pending);
         if (null === $document) {
@@ -41,11 +43,11 @@ final readonly class AnalyzeDocumentHandler
         }
 
         $document->startAnalysis();
-        $plan = $this->simulator->plan($document);
+        $scenario = $this->simulator->scenario($document);
 
         $this->bus->dispatch(
-            new CompleteAnalysis($message->documentId, $message->attemptId, $plan->failure),
-            [new DelayStamp($plan->delayMs)],
+            new FinishAnalysis($message->documentId, $message->attemptId, $scenario->failure),
+            [new DelayStamp($scenario->delayMs)],
         );
     }
 }

@@ -2,14 +2,8 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Analysis;
+namespace App\Tests\Integration\MessageHandler;
 
-use App\Analysis\AnalyzeDocument;
-use App\Analysis\AnalyzeDocumentHandler;
-use App\Analysis\CompleteAnalysis;
-use App\Analysis\CompleteAnalysisHandler;
-use App\Analysis\ReconcileAnalyses;
-use App\Analysis\ReconcileAnalysesHandler;
 use App\Analysis\Simulation\AnalysisSimulator;
 use App\Entity\Document;
 use App\Enum\AttemptStatus;
@@ -17,10 +11,17 @@ use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
 use App\Enum\FailureReason;
+use App\Message\FinishAnalysis;
+use App\Message\ReconcileAnalyses;
+use App\Message\StartAnalysis;
+use App\MessageHandler\FinishAnalysisHandler;
+use App\MessageHandler\ReconcileAnalysesHandler;
+use App\MessageHandler\StartAnalysisHandler;
+use App\Tests\Integration\AnalysisTestCase;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Uid\Uuid;
 
-final class AnalysisHandlersTest extends AnalysisTestCase
+final class StartAndFinishAnalysisHandlersTest extends AnalysisTestCase
 {
     public function testStartingMovesTheDocumentToProcessingAndSchedulesItsCompletionWithTheSimulatedDelay(): void
     {
@@ -34,7 +35,7 @@ final class AnalysisHandlersTest extends AnalysisTestCase
         $sent = $this->sent();
         $this->assertCount(1, $sent);
         $completion = $sent[0]->getMessage();
-        $this->assertInstanceOf(CompleteAnalysis::class, $completion);
+        $this->assertInstanceOf(FinishAnalysis::class, $completion);
         $this->assertTrue($reloaded->getCurrentAttempt()->getId()->equals($completion->attemptId));
         $this->assertNull($completion->failure);
         $delay = $sent[0]->last(DelayStamp::class)?->getDelay();
@@ -57,9 +58,9 @@ final class AnalysisHandlersTest extends AnalysisTestCase
     {
         $document = $this->createDocument();
 
-        $handler = self::getContainer()->get(AnalyzeDocumentHandler::class);
-        $this->asWorker(static fn () => $handler(new AnalyzeDocument($document->getId(), Uuid::v7())));
-        $this->asWorker(static fn () => $handler(new AnalyzeDocument(Uuid::v7(), Uuid::v7())));
+        $handler = self::getContainer()->get(StartAnalysisHandler::class);
+        $this->asWorker(static fn () => $handler(new StartAnalysis($document->getId(), Uuid::v7())));
+        $this->asWorker(static fn () => $handler(new StartAnalysis(Uuid::v7(), Uuid::v7())));
 
         $this->assertSame(DocumentStatus::Pending, $this->reload($document)->getStatus());
         $this->assertSame([], $this->sent());
@@ -135,13 +136,13 @@ final class AnalysisHandlersTest extends AnalysisTestCase
 
     private function analyze(Document $document): void
     {
-        $handler = self::getContainer()->get(AnalyzeDocumentHandler::class);
-        $this->asWorker(static fn () => $handler(new AnalyzeDocument($document->getId(), $document->getCurrentAttempt()->getId())));
+        $handler = self::getContainer()->get(StartAnalysisHandler::class);
+        $this->asWorker(static fn () => $handler(new StartAnalysis($document->getId(), $document->getCurrentAttempt()->getId())));
     }
 
     private function complete(Document $document, ?FailureReason $failure): void
     {
-        $handler = self::getContainer()->get(CompleteAnalysisHandler::class);
-        $this->asWorker(static fn () => $handler(new CompleteAnalysis($document->getId(), $document->getCurrentAttempt()->getId(), $failure)));
+        $handler = self::getContainer()->get(FinishAnalysisHandler::class);
+        $this->asWorker(static fn () => $handler(new FinishAnalysis($document->getId(), $document->getCurrentAttempt()->getId(), $failure)));
     }
 }

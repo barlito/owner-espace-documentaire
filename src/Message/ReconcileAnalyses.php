@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Analysis;
+namespace App\Message;
 
 /**
  * Safety net run by the scheduler: fails analyses stuck in processing and queues again those never picked up.

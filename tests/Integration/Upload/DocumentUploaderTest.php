@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Upload;
 
-use App\Analysis\AnalyzeDocument;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
+use App\Message\StartAnalysis;
 use App\Upload\DocumentUploader;
 use App\Upload\UploadPolicy;
 use App\Upload\UploadRejected;
@@ -84,7 +84,7 @@ final class DocumentUploaderTest extends KernelTestCase
         $sent = $transport->getSent();
         $this->assertCount(1, $sent);
         $message = $sent[0]->getMessage();
-        $this->assertInstanceOf(AnalyzeDocument::class, $message);
+        $this->assertInstanceOf(StartAnalysis::class, $message);
         $this->assertTrue($document->getId()->equals($message->documentId));
         $this->assertTrue($document->getCurrentAttempt()->getId()->equals($message->attemptId));
         $this->assertNotNull($document->getCurrentAttempt()->getQueuedAt());

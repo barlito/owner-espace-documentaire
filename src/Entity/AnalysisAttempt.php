@@ -55,7 +55,7 @@ class AnalysisAttempt
      * When the analysis message was sent. Null only for an attempt whose message was never sent (demo fixtures,
      * data from before the queue existed): the reconciliation queues those. A sent message cannot be lost, since it is
      * written in the same transaction as the attempt; a message Messenger gives up on fails the attempt instead
-     * (see AnalysisFailureListener).
+     * (see FailAnalysisOnGivenUpMessageListener).
      */
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $queuedAt = null;

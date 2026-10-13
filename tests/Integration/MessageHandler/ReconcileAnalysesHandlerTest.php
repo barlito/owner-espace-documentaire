@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Analysis;
+namespace App\Tests\Integration\MessageHandler;
 
 use App\Analysis\AnalysisQueue;
-use App\Analysis\AnalyzeDocument;
-use App\Analysis\AnalyzeDocumentHandler;
-use App\Analysis\ReconcileAnalyses;
-use App\Analysis\ReconcileAnalysesHandler;
-use App\Analysis\ReconcileSettings;
+use App\Analysis\ReconciliationSettings;
 use App\Entity\Document;
 use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
+use App\Message\ReconcileAnalyses;
+use App\Message\StartAnalysis;
+use App\MessageHandler\ReconcileAnalysesHandler;
+use App\MessageHandler\StartAnalysisHandler;
 use App\Repository\DocumentRepository;
+use App\Tests\Integration\AnalysisTestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\Messenger\Envelope;
 
@@ -50,7 +51,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
         $sent = $this->sent();
         $this->assertCount(1, $sent);
         $message = $sent[0]->getMessage();
-        $this->assertInstanceOf(AnalyzeDocument::class, $message);
+        $this->assertInstanceOf(StartAnalysis::class, $message);
         $this->assertTrue($document->getId()->equals($message->documentId));
         $this->assertSame(DocumentStatus::Pending, $this->reload($document)->getStatus());
     }
@@ -99,7 +100,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new ReconcileSettings('1 minute', 120, 100);
+        new ReconciliationSettings('1 minute', 120, 100);
     }
 
     /**
@@ -110,7 +111,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
         $handler = new ReconcileAnalysesHandler(
             self::getContainer()->get(DocumentRepository::class),
             self::getContainer()->get(AnalysisQueue::class),
-            new ReconcileSettings('1 minute', 600, $batch),
+            new ReconciliationSettings('1 minute', 600, $batch),
             $this->clock,
             new NullLogger(),
         );
@@ -126,7 +127,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
     {
         $messages = array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), $this->sent());
 
-        return array_values(array_map(static fn (AnalyzeDocument $message): string => $message->documentId->toRfc4122(), array_filter($messages, static fn (object $message): bool => $message instanceof AnalyzeDocument)));
+        return array_values(array_map(static fn (StartAnalysis $message): string => $message->documentId->toRfc4122(), array_filter($messages, static fn (object $message): bool => $message instanceof StartAnalysis)));
     }
 
     private function enqueue(Document $document): void
@@ -139,7 +140,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
 
     private function start(Document $document): void
     {
-        $handler = self::getContainer()->get(AnalyzeDocumentHandler::class);
-        $this->asWorker(static fn () => $handler(new AnalyzeDocument($document->getId(), $document->getCurrentAttempt()->getId())));
+        $handler = self::getContainer()->get(StartAnalysisHandler::class);
+        $this->asWorker(static fn () => $handler(new StartAnalysis($document->getId(), $document->getCurrentAttempt()->getId())));
     }
 }
