@@ -184,6 +184,8 @@ Un message peut se perdre (arrêt brutal, message mis en file d'échec après se
 | `ANALYSIS_MAX_REQUEUES` | `3` | Remises en file avant abandon |
 | `ANALYSIS_RECONCILE_BATCH` | `100` | Documents traités par type et par passage |
 
+**À faire évoluer : plusieurs workers.** Le Scheduler tourne dans chaque worker : avec plusieurs workers, chacun lance sa propre réconciliation, et plusieurs passages peuvent viser le même document en même temps. C'est sans conséquence (chaque document est verrouillé puis revérifié avant d'être modifié, le second passage ne fait donc rien), mais c'est du travail en double et de l'attente sur les verrous. Pour passer à plusieurs workers, il faudra n'exécuter la réconciliation qu'une fois par intervalle : un verrou sur le schedule (`Schedule::lock()` avec le composant Lock), ou un worker dédié au seul transport `scheduler_analysis`.
+
 Reprises techniques : les exceptions (base indisponible…) sont rejouées 3 fois avec un délai croissant, puis le message part en file `failed` (`messenger:failed:show`). Ce n'est pas le cas des échecs simulés, qui sont des résultats métier.
 
 ### Pourquoi le transport Doctrine
