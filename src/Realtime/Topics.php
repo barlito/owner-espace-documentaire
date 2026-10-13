@@ -25,4 +25,12 @@ final class Topics
     {
         return \sprintf('/clients/%s/documents', $clientId->toRfc4122());
     }
+
+    /**
+     * Every document change of every client, for the back office. Private: only administrators may subscribe.
+     */
+    public static function admin(): string
+    {
+        return '/admin/documents';
+    }
 }

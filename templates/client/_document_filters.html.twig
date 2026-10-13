@@ -1,12 +1,13 @@
 {# Search and filters, submitted by GET: the URL carries the state. Without JavaScript the "Rechercher" button submits
    the form and loads the whole page; with it, the form reloads the results frame only. #}
+{# Also used by the admin client view: it passes its own filters_action and filters_label. #}
 {% set field = 'w-full rounded-lg border border-gray-100 bg-white px-3 py-2.5' %}
 <twig:Card class="mb-6">
     <form
         method="get"
-        action="{{ path('client_dashboard') }}"
+        action="{{ filters_action|default(path('client_dashboard')) }}"
         role="search"
-        aria-label="Rechercher dans mes pièces"
+        aria-label="{{ filters_label|default('Rechercher dans mes pièces') }}"
         class="space-y-4"
         data-document-filters-target="form"
         data-turbo-frame="documents-results"
@@ -35,7 +36,7 @@
             <twig:Button type="submit" variant="secondary" icon="lucide:search">Rechercher</twig:Button>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
                 <label for="filter-statut" class="mb-1 block text-sm font-medium text-navy-500">Statut</label>
                 <select id="filter-statut" name="statut" class="{{ field }}" data-action="change->document-filters#submit">
@@ -49,19 +50,21 @@
                 <label for="filter-periode" class="mb-1 block text-sm font-medium text-navy-500">Période</label>
                 <select id="filter-periode" name="periode" class="{{ field }}" data-action="change->document-filters#submit">
                     <option value="">Toutes les périodes</option>
-                    <optgroup label="Année">
+                    <optgroup label="Années">
                         {% for period in periods.years %}
                             <option value="{{ period.value }}"{{ filters.period.value|default(null) == period.value ? ' selected' }}>{{ period.label }}</option>
                         {% endfor %}
                     </optgroup>
-                    <optgroup label="Mois">
-                        {% for period in periods.months %}
-                            <option value="{{ period.value }}"{{ filters.period.value|default(null) == period.value ? ' selected' }}>{{ period.label }}</option>
-                        {% endfor %}
-                    </optgroup>
+                    {% for group in periods.monthGroups %}
+                        <optgroup label="Mois de {{ group.year }}">
+                            {% for period in group.months %}
+                                <option value="{{ period.value }}"{{ filters.period.value|default(null) == period.value ? ' selected' }}>{{ period.label }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
                 </select>
             </div>
-            <div class="col-span-2 sm:col-span-1">
+            <div>
                 <label for="filter-nature" class="mb-1 block text-sm font-medium text-navy-500">Nature</label>
                 <select id="filter-nature" name="nature" class="{{ field }}" data-action="change->document-filters#submit">
                     <option value="">Toutes les natures</option>

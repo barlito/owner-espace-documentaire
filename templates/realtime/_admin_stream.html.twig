@@ -1,0 +1,5 @@
+{# Subscribes an administrator page to the back office topic (every client's documents) and issues the subscription
+   cookie, limited to that topic alone. Client pages never include this: they only get their own client's topic. #}
+{% if is_granted('ROLE_ADMIN') %}
+    {{ turbo_stream_from(admin_topic(), private: true) }}
+{% endif %}

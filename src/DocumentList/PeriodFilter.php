@@ -47,25 +47,21 @@ final readonly class PeriodFilter
     }
 
     /**
-     * Choices offered by the filter: the last years and months, most recent first, plus the active period when it
-     * falls outside of them (a shared URL must stay faithful in the form).
+     * Choices offered by the filter: the last years, and the months that hold documents grouped by year (all most
+     * recent first), plus the active period when it falls outside of them (a shared URL must stay faithful in the form).
      *
-     * @return array{years: list<self>, months: list<self>}
+     * @param list<string> $availableMonths "YYYY-MM" values, e.g. the months the client has documents for
+     *
+     * @return array{years: list<self>, monthGroups: list<array{year: string, months: list<self>}>}
      */
-    public static function suggestions(\DateTimeImmutable $today, ?self $active): array
+    public static function suggestions(\DateTimeImmutable $today, ?self $active, array $availableMonths = []): array
     {
         $years = [];
         for ($i = 0; $i < 5; ++$i) {
             $years[] = (string) ((int) $today->format('Y') - $i);
         }
 
-        $months = [];
-        $month = $today->modify('first day of this month');
-        for ($i = 0; $i < 12; ++$i) {
-            $months[] = $month->format('Y-m');
-            $month = $month->modify('-1 month');
-        }
-
+        $months = $availableMonths;
         if (null !== $active) {
             if (7 === \strlen($active->value) && !\in_array($active->value, $months, true)) {
                 $months[] = $active->value;
@@ -77,9 +73,19 @@ final readonly class PeriodFilter
         rsort($years);
         rsort($months);
 
+        $byYear = [];
+        foreach (self::parseAll($months) as $month) {
+            $byYear[substr($month->value, 0, 4)][] = $month;
+        }
+
+        $monthGroups = [];
+        foreach ($byYear as $year => $yearMonths) {
+            $monthGroups[] = ['year' => (string) $year, 'months' => $yearMonths];
+        }
+
         return [
             'years' => self::parseAll($years),
-            'months' => self::parseAll($months),
+            'monthGroups' => $monthGroups,
         ];
     }
 

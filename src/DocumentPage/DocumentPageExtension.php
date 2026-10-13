@@ -8,13 +8,14 @@ use App\Entity\Document;
 use Twig\Attribute\AsTwigFunction;
 
 /**
- * Exposes the client document page's view data to Twig, so that the page and its live updates
+ * Exposes the document pages' view data (client and admin) to Twig, so that the page and its live updates
  * (realtime/document_streams.stream.html.twig, rendered by the worker) share the same partials.
  */
 final readonly class DocumentPageExtension
 {
     public function __construct(
         private ClientTimelinePresenter $timeline,
+        private AdminTimelinePresenter $adminTimeline,
         private ClientAnalysisPresenter $analysis,
     ) {
     }
@@ -26,6 +27,15 @@ final readonly class DocumentPageExtension
     public function clientTimeline(Document $document): array
     {
         return $this->timeline->present($document);
+    }
+
+    /**
+     * @return list<TimelineEntry>
+     */
+    #[AsTwigFunction('admin_timeline')]
+    public function adminTimeline(Document $document): array
+    {
+        return $this->adminTimeline->present($document);
     }
 
     #[AsTwigFunction('client_analysis')]

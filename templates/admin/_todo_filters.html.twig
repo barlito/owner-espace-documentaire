@@ -1,0 +1,58 @@
+{# Filters of the to-do list, submitted by GET: the URL carries the state (see Mon dossier). #}
+{% set field = 'w-full rounded-lg border border-gray-100 bg-white px-3 py-2.5' %}
+<twig:Card class="mb-6">
+    <form
+        method="get"
+        action="{{ path('admin_dashboard') }}"
+        role="search"
+        aria-label="Filtrer les analyses en échec"
+        class="space-y-4"
+        data-document-filters-target="form"
+        data-turbo-frame="todo-results"
+        data-turbo-action="advance"
+        data-action="submit->document-filters#prune"
+    >
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="min-w-0 flex-1 basis-64">
+                <label for="filter-q" class="mb-1 block text-sm font-medium text-navy-500">Nom du fichier</label>
+                <div class="relative">
+                    {{ ux_icon('lucide:search', {class: 'pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-500'}) }}
+                    <input
+                        type="search"
+                        id="filter-q"
+                        name="q"
+                        value="{{ filters.search }}"
+                        maxlength="100"
+                        autocomplete="off"
+                        placeholder="Rechercher un document"
+                        class="{{ field }} pl-9"
+                        data-document-filters-target="search"
+                        data-action="input->document-filters#debounce"
+                    >
+                </div>
+            </div>
+            <twig:Button type="submit" variant="secondary" icon="lucide:search">Rechercher</twig:Button>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+                <label for="filter-client" class="mb-1 block text-sm font-medium text-navy-500">Client</label>
+                <select id="filter-client" name="client" class="{{ field }}" data-action="change->document-filters#submit">
+                    <option value="">Tous les clients</option>
+                    {% for choice in clientChoices %}
+                        <option value="{{ choice.id }}"{{ filters.clientId and filters.clientId.equals(choice.id) ? ' selected' }}>{{ choice.name }} ({{ choice.count }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter-raison" class="mb-1 block text-sm font-medium text-navy-500">Raison</label>
+                <select id="filter-raison" name="raison" class="{{ field }}" data-action="change->document-filters#submit">
+                    <option value="">Toutes les raisons</option>
+                    {% for reason in reasons %}
+                        <option value="{{ reason.value }}"{{ filters.reason is same as reason ? ' selected' }}>{{ reason.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</twig:Card>

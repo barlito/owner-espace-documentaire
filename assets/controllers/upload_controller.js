@@ -8,7 +8,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     static targets = [
         'input', 'dropzone', 'form', 'fallback', 'enhanced',
-        'listSection', 'actions', 'list', 'rowTemplate', 'sendButton', 'sendLabel', 'sendHint',
+        'listSection', 'listTitle', 'actions', 'list', 'rowTemplate', 'sendButton', 'sendLabel', 'sendHint',
         'summary', 'successAlert', 'successText', 'partialAlert', 'partialText', 'dashboardLink',
     ];
 
@@ -223,6 +223,7 @@ export default class extends Controller {
         if (201 === request.status) {
             // Markup rendered by our own server (no user data), whose element is then replaced by live updates.
             if (payload?.status_html) item.element.querySelector('[data-badge="done"]').innerHTML = payload.status_html;
+            if (payload?.url) this.linkToDocument(item, payload.url);
             this.settle(item, 'done');
         } else if (422 === request.status && payload?.error) {
             this.settle(item, 'refused', payload.error);
@@ -231,6 +232,17 @@ export default class extends Controller {
         } else {
             this.settle(item, 'interrupted', 'Le serveur n\'a pas pu enregistrer ce fichier, réessayez.');
         }
+    }
+
+    // The file name becomes a link to the document page. A full page load (not Turbo) so that leaving while other
+    // files are still being sent triggers the browser's confirmation.
+    linkToDocument(item, url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.textContent = item.file.name;
+        link.className = 'hover:underline';
+        link.dataset.turbo = 'false';
+        item.element.querySelector('[data-name]').replaceChildren(link);
     }
 
     settle(item, state, message) {
@@ -346,6 +358,9 @@ export default class extends Controller {
         const busy = this.started || sending > 0;
 
         this.listSectionTarget.classList.toggle('hidden', 0 === this.items.length);
+        // The list reads "sent" once nothing is left to send; a new selection brings it back to "to send".
+        const sent = this.countOf('done') > 0 && 0 === pending && 0 === sending && 0 === this.countOf('interrupted');
+        this.listTitleTarget.textContent = sent ? 'Pièces envoyées' : 'Pièces à envoyer';
         this.actionsTarget.classList.toggle('hidden', 0 === pending && !busy);
         this.sendButtonTarget.disabled = busy || 0 === pending;
         this.sendLabelTarget.textContent = pending > 0

@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ client.name }}{% endblock %}
+
+{% block body %}
+    <a href="{{ path('admin_clients') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-navy-200 hover:text-navy-500">
+        {{ ux_icon('lucide:arrow-left', {class: 'size-4'}) }}
+        Retour aux clients
+    </a>
+
+    <div class="mb-8">
+        <h1 class="break-words text-3xl">{{ client.name }}</h1>
+        <p class="mt-1 text-gray-500">Client depuis le {{ client.createdAt|date('d/m/Y') }}</p>
+    </div>
+
+    <div data-controller="document-filters" data-action="turbo:frame-load->document-filters#announce">
+        {% if not folderEmpty %}
+            {{ include('client/_document_filters.html.twig', {
+                filters_action: path('admin_client_show', {id: client.id}),
+                filters_label: 'Rechercher dans les pièces du client',
+            }) }}
+        {% endif %}
+
+        <turbo-frame id="documents-results" data-turbo-action="advance">
+            {{ include('admin/client/_documents_results.html.twig') }}
+        </turbo-frame>
+    </div>
+{% endblock %}

@@ -106,21 +106,27 @@ final class SecurityTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testAdminSeesAllClientsWithTheirDocumentCount(): void
+    public function testAdminSeesTheSupervisionAndItsNavigation(): void
     {
-        $this->createClientUser('Boulangerie Martin', 'paul@boulangerie-martin.test');
-        $this->createClientUser('Micro-crèche Les Petits Pas', 'claire@lespetitspas.test');
         $this->browser->loginUser($this->createAdmin());
 
-        $this->browser->request('GET', '/admin');
+        $crawler = $this->browser->request('GET', '/admin');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Supervision');
-        $this->assertSelectorTextContains('tbody', 'Boulangerie Martin');
-        $this->assertSelectorTextContains('tbody', 'Micro-crèche Les Petits Pas');
-        $this->assertSelectorTextContains('tbody', '0 document');
         $this->assertSelectorTextContains('header', 'Sophie Laurent');
         $this->assertSelectorTextContains('header', 'Équipe OWNER');
+        $this->assertSelectorTextContains('nav[aria-label=Administration]', 'Clients');
+        $this->assertCount(1, $crawler->filter('#admin-kpis'));
+    }
+
+    public function testClientsDoNotGetTheAdminNavigation(): void
+    {
+        $this->browser->loginUser($this->createClientUser());
+
+        $this->browser->request('GET', '/espace');
+
+        $this->assertSelectorNotExists('nav[aria-label=Administration]');
     }
 
     public function testLogoutRequiresPostAndEndsTheSession(): void

@@ -1,0 +1,24 @@
+{# Removable chips of the active filters. Expects: chips ([{label, name, href}], href being the list without that filter)
+   and clear_href. Links leave the results frame (_top) so that the form, outside of it, is rendered again with the
+   new values. #}
+{% if chips %}
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-gray-500">Filtres actifs :</span>
+        <ul class="contents">
+            {% for chip in chips %}
+                <li class="min-w-0 max-w-full">
+                    <a
+                        href="{{ chip.href }}"
+                        data-turbo-frame="_top"
+                        aria-label="Retirer le filtre {{ chip.name }} : {{ chip.label }}"
+                        class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-navy-25 py-1 pr-2 pl-3 text-sm font-medium text-navy-500 hover:bg-navy-50"
+                    >
+                        <span class="truncate">{{ chip.label }}</span>
+                        {{ ux_icon('lucide:x', {class: 'size-3.5 shrink-0'}) }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+        <a href="{{ clear_href }}" data-turbo-frame="_top" class="rounded text-sm font-medium text-primary-600 underline underline-offset-2 hover:text-primary-700">Effacer les filtres</a>
+    </div>
+{% endif %}
