@@ -1,0 +1,126 @@
+{# Content of the results frame: summary, active filters, the list and its pager. Links that change the filters leave
+   the frame (_top) so that the form, outside of it, is rendered again with the new values; the pager stays inside. #}
+
+{% if folderEmpty %}
+    {# Live updates: the stream targets are #dashboard-empty, #dashboard-documents and each row's id.
+       The card only shows once it holds a row, so the first document received live appears without a reload. #}
+    <div id="dashboard-empty">
+        <twig:Card>
+            <twig:EmptyState
+                icon="lucide:folder-open"
+                title="Votre dossier est encore vide"
+                description="Déposez vos documents comptables, juridiques et sociaux : vous suivrez ici leur réception puis leur analyse."
+            >
+                <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
+            </twig:EmptyState>
+        </twig:Card>
+    </div>
+
+    <twig:Card :padded="false" class="hidden has-[li]:block">
+        <ul id="dashboard-documents" class="divide-y divide-gray-50"></ul>
+    </twig:Card>
+{% else %}
+    {% set total = page.total %}
+    {% set chips = [] %}
+    {% if filters.search %}{% set chips = chips|merge([{param: 'q', label: 'Nom : « ' ~ filters.search ~ ' »', name: 'Nom du fichier'}]) %}{% endif %}
+    {% if filters.status %}{% set chips = chips|merge([{param: 'statut', label: filters.status.label, name: 'Statut'}]) %}{% endif %}
+    {% if filters.type %}{% set chips = chips|merge([{param: 'nature', label: filters.type.label, name: 'Nature'}]) %}{% endif %}
+    {% if filters.uncategorized %}{% set chips = chips|merge([{param: 'nature', label: 'Non catégorisée', name: 'Nature'}]) %}{% endif %}
+    {% if filters.period %}{% set chips = chips|merge([{param: 'periode', label: filters.period.label, name: 'Période'}]) %}{% endif %}
+
+    {# Read aloud once the frame is loaded (see the dossier-filters controller), through the page's single live region. #}
+    <div data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+        <nav aria-label="Pièces par statut" class="mb-4">
+            <ul class="flex flex-wrap gap-2">
+                {% for entry in statusCounts|filter(entry => entry.count > 0) %}
+                    <li>
+                        <a
+                            href="{{ path('client_dashboard', {statut: entry.status.value}) }}"
+                            data-turbo-frame="_top"
+                            class="inline-flex rounded-full {{ filters.status is same as entry.status ? 'ring-2 ring-navy-500 ring-offset-2' : 'hover:opacity-80' }}"
+                            {% if filters.status is same as entry.status %}aria-current="true"{% endif %}
+                        >
+                            <twig:Badge variant="{{ entry.status.badgeVariant }}" icon="{{ entry.status.icon }}">{{ entry.count }} · {{ entry.status.label }}</twig:Badge>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+
+        {% if chips %}
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+                <span class="text-sm text-gray-500">Filtres actifs :</span>
+                <ul class="contents">
+                    {% for chip in chips %}
+                        <li>
+                            <a
+                                href="{{ path('client_dashboard', filters.without(chip.param).query) }}"
+                                data-turbo-frame="_top"
+                                aria-label="Retirer le filtre {{ chip.name }} : {{ chip.label }}"
+                                class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-navy-25 py-1 pr-2 pl-3 text-sm font-medium text-navy-500 hover:bg-navy-50"
+                            >
+                                <span class="truncate">{{ chip.label }}</span>
+                                {{ ux_icon('lucide:x', {class: 'size-3.5 shrink-0'}) }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <a href="{{ path('client_dashboard') }}" data-turbo-frame="_top" class="rounded text-sm font-medium text-primary-600 underline underline-offset-2 hover:text-primary-700">Effacer les filtres</a>
+            </div>
+        {% endif %}
+
+        {% if total == 0 %}
+            <twig:Card>
+                <twig:EmptyState
+                    icon="lucide:search-x"
+                    title="Aucune pièce ne correspond à votre recherche"
+                    description="Modifiez vos critères ou retirez des filtres pour élargir les résultats."
+                >
+                    <twig:Button variant="secondary" href="{{ path('client_dashboard') }}" data-turbo-frame="_top">Effacer les filtres</twig:Button>
+                </twig:EmptyState>
+            </twig:Card>
+        {% else %}
+            {# New documents received live are prepended to #dashboard-documents: it only exists on the unfiltered first page,
+               the only one where a new document belongs at the top. #}
+            {% set listId = not filters.active and page.number == 1 ? 'dashboard-documents' : 'documents-list' %}
+            <twig:Card :padded="false">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-gray-50 px-5 py-4 sm:px-6">
+                    <h2 class="text-lg">Mes pièces</h2>
+                    <p class="text-sm text-gray-500">{{ total }} {{ total > 1 ? 'pièces' : 'pièce' }}{% if filters.active %} {{ total > 1 ? 'correspondent' : 'correspond' }}{% endif %}</p>
+                </div>
+                <ul id="{{ listId }}" class="divide-y divide-gray-50">
+                    {% for document in page.items %}
+                        {{ include('client/_document_row.html.twig') }}
+                    {% endfor %}
+                </ul>
+
+                {% if page.pageCount > 1 %}
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-gray-50 px-5 py-4 sm:px-6">
+                        <p class="text-sm text-gray-500">Pièces {{ page.range.first }} à {{ page.range.last }} sur {{ total }}</p>
+                        <nav aria-label="Pagination">
+                            <ul class="flex flex-wrap items-center gap-1">
+                                {% if page.hasPrevious %}
+                                    <li><twig:Button variant="ghost" size="sm" icon="lucide:arrow-left" href="{{ path('client_dashboard', filters.query|merge(page.number > 2 ? {page: page.number - 1} : {})) }}" rel="prev">Précédent</twig:Button></li>
+                                {% endif %}
+                                {% for number in page.window %}
+                                    <li>
+                                        {% if number is null %}
+                                            <span class="px-2 text-gray-500" aria-hidden="true">…</span>
+                                        {% elseif number == page.number %}
+                                            <span class="inline-flex min-w-9 justify-center rounded-lg bg-navy-500 px-3 py-1.5 text-sm font-semibold text-white" aria-current="page"><span class="sr-only">Page </span>{{ number }}</span>
+                                        {% else %}
+                                            <a href="{{ path('client_dashboard', filters.query|merge({page: number})) }}" class="inline-flex min-w-9 justify-center rounded-lg px-3 py-1.5 text-sm font-semibold text-navy-500 hover:bg-navy-25"><span class="sr-only">Page </span>{{ number }}</a>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                                {% if page.hasNext %}
+                                    <li><twig:Button variant="ghost" size="sm" href="{{ path('client_dashboard', filters.query|merge({page: page.number + 1})) }}" rel="next">Suivant {{ ux_icon('lucide:arrow-right', {class: 'size-4 shrink-0'}) }}</twig:Button></li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                {% endif %}
+            </twig:Card>
+        {% endif %}
+    </div>
+{% endif %}

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Dossier\DocumentFilters;
+use App\Dossier\Page;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Enum\DocumentStatus;
@@ -33,20 +35,110 @@ class DocumentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Most recent documents of a client. Status and type are plain columns: no association is loaded.
+     * One page of "Mon dossier": the client's documents matching the filters, most recent first.
+     * Documents are loaded without any association (the row only reads scalar columns); an out-of-range page
+     * returns the last one.
      *
-     * @return list<Document>
+     * @return Page<Document>
      */
-    public function findLatestForClient(Client $client, int $limit): array
+    public function searchForClient(Client $client, DocumentFilters $filters, int $page, int $perPage): Page
     {
-        return array_values($this->createQueryBuilder('d')
-            ->andWhere('d.client = :client')
-            ->setParameter('client', $client)
+        $total = $this->countForClient($client, $filters);
+        $number = Page::clamp($page, $total, $perPage);
+        if (0 === $total) {
+            return new Page([], 0, 1, $perPage);
+        }
+
+        /** @var list<Document> $items */
+        $items = $this->filteredForClient($client, $filters)
             ->orderBy('d.uploadedAt', 'DESC')
             ->addOrderBy('d.id', 'DESC')
-            ->setMaxResults($limit)
+            ->setFirstResult(($number - 1) * $perPage)
+            ->setMaxResults($perPage)
             ->getQuery()
-            ->getResult());
+            ->getResult()
+        ;
+
+        return new Page($items, $total, $number, $perPage);
+    }
+
+    public function countForClient(Client $client, DocumentFilters $filters): int
+    {
+        return (int) $this->filteredForClient($client, $filters)
+            ->select('COUNT(d.id)')
+            ->getQuery()
+            ->getSingleScalarResult()
+        ;
+    }
+
+    /**
+     * Number of documents of the client per status, in the order of the enum (statuses without document: 0).
+     *
+     * @return list<array{status: DocumentStatus, count: int}>
+     */
+    public function countByStatusForClient(Client $client): array
+    {
+        /** @var list<array{status: DocumentStatus, total: int|string}> $rows */
+        $rows = $this->createQueryBuilder('d')
+            ->select('d.status AS status', 'COUNT(d.id) AS total')
+            ->andWhere('d.client = :client')
+            ->setParameter('client', $client)
+            ->groupBy('d.status')
+            ->getQuery()
+            ->getResult()
+        ;
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[$row['status']->value] = (int) $row['total'];
+        }
+
+        return array_map(
+            static fn (DocumentStatus $status): array => ['status' => $status, 'count' => $counts[$status->value] ?? 0],
+            DocumentStatus::cases(),
+        );
+    }
+
+    /**
+     * The client condition comes first and is the only way in: filters can only narrow it down.
+     */
+    private function filteredForClient(Client $client, DocumentFilters $filters): QueryBuilder
+    {
+        $queryBuilder = $this->createQueryBuilder('d')
+            ->andWhere('d.client = :client')
+            ->setParameter('client', $client)
+        ;
+
+        if (null !== $filters->search) {
+            // Case and accent insensitive on both sides, so "releve" finds "Relevé" and conversely.
+            $queryBuilder
+                ->andWhere('LOWER(UNACCENT(d.originalFilename)) LIKE LOWER(UNACCENT(:search))')
+                ->setParameter('search', '%' . DocumentFilters::escapeLike($filters->search) . '%')
+            ;
+        }
+
+        if (null !== $filters->status) {
+            $queryBuilder->andWhere('d.status = :status')->setParameter('status', $filters->status);
+        }
+
+        if ($filters->uncategorized) {
+            $queryBuilder->andWhere('d.type IS NULL');
+        } elseif (null !== $filters->type) {
+            $queryBuilder->andWhere('d.type = :type')->setParameter('type', $filters->type);
+        }
+
+        if (null !== $filters->period) {
+            // Overlap, not inclusion: a quarterly statement matches each of its months. A document without
+            // period has NULL bounds, which never satisfy the comparisons.
+            $queryBuilder
+                ->andWhere('d.periodStart <= :periodEnd')
+                ->andWhere('d.periodEnd >= :periodStart')
+                ->setParameter('periodStart', $filters->period->start, Types::DATE_IMMUTABLE)
+                ->setParameter('periodEnd', $filters->period->end, Types::DATE_IMMUTABLE)
+            ;
+        }
+
+        return $queryBuilder;
     }
 
     /**

@@ -58,7 +58,7 @@ final class UploadTest extends WebTestCase
         $this->assertSame('/espace', $payload['url']);
 
         $this->browser->request('GET', '/espace');
-        $this->assertSelectorTextContains('main', 'Dernières pièces reçues');
+        $this->assertSelectorTextContains('main', 'Mes pièces');
         $this->assertSelectorTextContains('main', 'Bilan 2024.pdf');
         $this->assertSelectorTextContains('main', 'Bilan, comptes annuels ou liasse fiscale');
         $this->assertSelectorTextContains('main', 'En attente d\'analyse');
@@ -99,12 +99,12 @@ final class UploadTest extends WebTestCase
 
         $this->browser->request('GET', '/espace');
 
-        $this->assertSelectorTextContains('main li', 'Non catégorisée');
-        $this->assertSelectorTextContains('main li', '69 octets');
-        $this->assertMatchesRegularExpression('#\d{2}/\d{2}/\d{4} à \d{2}:\d{2}#', $this->browser->getCrawler()->filter('main li')->text());
+        $this->assertSelectorTextContains('main li[id^=document-]', 'Non catégorisée');
+        $this->assertSelectorTextContains('main li[id^=document-]', '69 octets');
+        $this->assertMatchesRegularExpression('#\d{2}/\d{2}/\d{4} à \d{2}:\d{2}#', $this->browser->getCrawler()->filter('main li[id^=document-]')->text());
     }
 
-    public function testDashboardShowsOnlyTheTenLatestDocuments(): void
+    public function testDashboardListsEveryDocumentMostRecentFirst(): void
     {
         $this->browser->loginUser($this->createClientUser());
         $token = $this->tokenFromUploadPage();
@@ -115,9 +115,8 @@ final class UploadTest extends WebTestCase
 
         $crawler = $this->browser->request('GET', '/espace');
 
-        $this->assertCount(10, $crawler->filter('main li'));
-        $this->assertSelectorTextContains('main', 'piece-12.pdf');
-        $this->assertSelectorTextNotContains('main', 'piece-01.pdf');
+        $this->assertCount(12, $crawler->filter('main li[id^=document-]'));
+        $this->assertSelectorTextContains('main li[id^=document-]', 'piece-12.pdf');
     }
 
     public function testUnsupportedFormatIsRefusedWithAFrenchMessage(): void

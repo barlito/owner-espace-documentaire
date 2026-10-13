@@ -1,0 +1,80 @@
+{# Search and filters, submitted by GET: the URL carries the state. Without JavaScript the "Rechercher" button submits
+   the form and loads the whole page; with it, the form reloads the results frame only. #}
+{% set field = 'w-full rounded-lg border border-gray-100 bg-white px-3 py-2.5' %}
+<twig:Card class="mb-6">
+    <form
+        method="get"
+        action="{{ path('client_dashboard') }}"
+        role="search"
+        aria-label="Rechercher dans mes pièces"
+        class="space-y-4"
+        data-dossier-filters-target="form"
+        data-turbo-frame="documents-results"
+        data-turbo-action="advance"
+        data-action="submit->dossier-filters#prune"
+    >
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="min-w-0 flex-1 basis-64">
+                <label for="filter-q" class="mb-1 block text-sm font-medium text-navy-500">Nom du fichier</label>
+                <div class="relative">
+                    {{ ux_icon('lucide:search', {class: 'pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-500'}) }}
+                    <input
+                        type="search"
+                        id="filter-q"
+                        name="q"
+                        value="{{ filters.search }}"
+                        maxlength="100"
+                        autocomplete="off"
+                        placeholder="Rechercher un document"
+                        class="{{ field }} pl-9"
+                        data-dossier-filters-target="search"
+                        data-action="input->dossier-filters#debounce"
+                    >
+                </div>
+            </div>
+            <twig:Button type="submit" variant="secondary" icon="lucide:search">Rechercher</twig:Button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div>
+                <label for="filter-statut" class="mb-1 block text-sm font-medium text-navy-500">Statut</label>
+                <select id="filter-statut" name="statut" class="{{ field }}" data-action="change->dossier-filters#submit">
+                    <option value="">Tous les statuts</option>
+                    {% for entry in statusCounts %}
+                        <option value="{{ entry.status.value }}"{{ filters.status is same as entry.status ? ' selected' }}>{{ entry.status.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter-periode" class="mb-1 block text-sm font-medium text-navy-500">Période</label>
+                <select id="filter-periode" name="periode" class="{{ field }}" data-action="change->dossier-filters#submit">
+                    <option value="">Toutes les périodes</option>
+                    <optgroup label="Année">
+                        {% for period in periods.years %}
+                            <option value="{{ period.value }}"{{ filters.period.value|default(null) == period.value ? ' selected' }}>{{ period.label }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Mois">
+                        {% for period in periods.months %}
+                            <option value="{{ period.value }}"{{ filters.period.value|default(null) == period.value ? ' selected' }}>{{ period.label }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+                <label for="filter-nature" class="mb-1 block text-sm font-medium text-navy-500">Nature</label>
+                <select id="filter-nature" name="nature" class="{{ field }}" data-action="change->dossier-filters#submit">
+                    <option value="">Toutes les natures</option>
+                    <option value="{{ constant('App\\Dossier\\DocumentFilters::UNCATEGORIZED') }}"{{ filters.uncategorized ? ' selected' }}>Non catégorisée</option>
+                    {% for group in typeGroups %}
+                        <optgroup label="{{ group.family.label }}">
+                            {% for type in group.types %}
+                                <option value="{{ type.value }}"{{ filters.type is same as type ? ' selected' }}>{{ type.label }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</twig:Card>
