@@ -22,25 +22,27 @@
 {% else %}
     {% set total = page.total %}
     {% set chips = [] %}
-    {% if filters.search %}{% set chips = chips|merge([{param: 'q', label: 'Nom : « ' ~ filters.search ~ ' »', name: 'Nom du fichier'}]) %}{% endif %}
-    {% if filters.status %}{% set chips = chips|merge([{param: 'statut', label: filters.status.label, name: 'Statut'}]) %}{% endif %}
-    {% if filters.type %}{% set chips = chips|merge([{param: 'nature', label: filters.type.label, name: 'Nature'}]) %}{% endif %}
-    {% if filters.uncategorized %}{% set chips = chips|merge([{param: 'nature', label: 'Non catégorisée', name: 'Nature'}]) %}{% endif %}
-    {% if filters.period %}{% set chips = chips|merge([{param: 'periode', label: filters.period.label, name: 'Période'}]) %}{% endif %}
+    {% if filters.search %}{% set chips = chips|merge([{param: 'q', label: '« ' ~ filters.search ~ ' »', remove: 'Retirer la recherche « ' ~ filters.search ~ ' »'}]) %}{% endif %}
+    {% if filters.status %}{% set chips = chips|merge([{param: 'statut', label: filters.status.label, remove: 'Retirer le filtre Statut : ' ~ filters.status.label}]) %}{% endif %}
+    {% if filters.type %}{% set chips = chips|merge([{param: 'nature', label: filters.type.label, remove: 'Retirer le filtre Nature : ' ~ filters.type.label}]) %}{% endif %}
+    {% if filters.uncategorized %}{% set chips = chips|merge([{param: 'nature', label: 'Non catégorisée', remove: 'Retirer le filtre Nature : Non catégorisée'}]) %}{% endif %}
+    {% if filters.period %}{% set chips = chips|merge([{param: 'periode', label: filters.period.label, remove: 'Retirer le filtre Période : ' ~ filters.period.label}]) %}{% endif %}
 
     {# Read aloud once the frame is loaded (see the document-filters controller), through the page's single live region. #}
-    <div data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
+    <div data-filters="{{ filters.query|json_encode }}" data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
         <nav aria-label="Pièces par statut" class="mb-4">
             <ul class="flex flex-wrap gap-2">
                 {% for entry in statusCounts|filter(entry => entry.count > 0) %}
+                    {% set selected = filters.status is same as entry.status %}
                     <li>
+                        {# Keeps the other filters and swaps the status; the active one is a toggle that removes it. #}
                         <a
-                            href="{{ path('client_dashboard', {statut: entry.status.value}) }}"
+                            href="{{ path('client_dashboard', filters.without('statut').query|merge(selected ? {} : {statut: entry.status.value})) }}"
                             data-turbo-frame="_top"
-                            class="inline-flex rounded-full {{ filters.status is same as entry.status ? 'ring-2 ring-navy-500 ring-offset-2' : 'hover:opacity-80' }}"
-                            {% if filters.status is same as entry.status %}aria-current="true"{% endif %}
+                            class="inline-flex rounded-full {{ selected ? 'ring-2 ring-navy-500 ring-offset-2' : 'hover:opacity-80' }}"
+                            {% if selected %}aria-current="true"{% endif %}
                         >
-                            <twig:Badge variant="{{ entry.status.badgeVariant }}" icon="{{ entry.status.icon }}">{{ entry.count }} · {{ entry.status.label }}</twig:Badge>
+                            <twig:Badge variant="{{ entry.status.badgeVariant }}" icon="{{ entry.status.icon }}">{{ entry.count }} · {{ entry.status.label }}{% if selected %}<span class="sr-only"> (filtre actif, activer pour le retirer)</span>{% endif %}</twig:Badge>
                         </a>
                     </li>
                 {% endfor %}
@@ -56,7 +58,7 @@
                             <a
                                 href="{{ path('client_dashboard', filters.without(chip.param).query) }}"
                                 data-turbo-frame="_top"
-                                aria-label="Retirer le filtre {{ chip.name }} : {{ chip.label }}"
+                                aria-label="{{ chip.remove }}"
                                 class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-navy-25 py-1 pr-2 pl-3 text-sm font-medium text-navy-500 hover:bg-navy-50"
                             >
                                 <span class="truncate">{{ chip.label }}</span>
@@ -70,6 +72,7 @@
         {% endif %}
 
         {% if total == 0 %}
+            <h2 class="sr-only" tabindex="-1" data-results-heading>Résultats</h2>
             <twig:Card>
                 <twig:EmptyState
                     icon="lucide:search-x"
@@ -83,12 +86,13 @@
             {# New documents received live are prepended to #dashboard-documents: it only exists on the unfiltered first page,
                the only one where a new document belongs at the top. #}
             {% set listId = not filters.active and page.number == 1 ? 'dashboard-documents' : 'documents-list' %}
-            <twig:Card :padded="false">
+            {# The live-list controller counts the rows received live and keeps the list to one page (it only has work on #dashboard-documents). #}
+            <twig:Card :padded="false" data-controller="live-list" data-live-list-max-value="{{ page.perPage }}" data-live-list-total-value="{{ total }}">
                 <div class="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-gray-50 px-5 py-4 sm:px-6">
-                    <h2 class="text-lg">Mes pièces</h2>
-                    <p class="text-sm text-gray-500">{{ total }} {{ total > 1 ? 'pièces' : 'pièce' }}{% if filters.active %} {{ total > 1 ? 'correspondent' : 'correspond' }}{% endif %}</p>
+                    <h2 class="scroll-mt-4 text-lg" tabindex="-1" data-results-heading>Mes pièces</h2>
+                    <p class="text-sm text-gray-500" data-live-list-target="count">{{ total }} {{ total > 1 ? 'pièces' : 'pièce' }}{% if filters.active %} {{ total > 1 ? 'correspondent' : 'correspond' }}{% endif %}</p>
                 </div>
-                <ul id="{{ listId }}" class="divide-y divide-gray-50">
+                <ul id="{{ listId }}" class="divide-y divide-gray-50" data-live-list-target="list">
                     {% for document in page.items %}
                         {{ include('client/_document_row.html.twig') }}
                     {% endfor %}
@@ -96,7 +100,7 @@
 
                 {% if page.pageCount > 1 %}
                     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-gray-50 px-5 py-4 sm:px-6">
-                        <p class="text-sm text-gray-500">Pièces {{ page.range.first }} à {{ page.range.last }} sur {{ total }}</p>
+                        <p class="text-sm text-gray-500">Pièces {{ page.range.first }} à {{ page.range.last }} sur <span data-live-list-target="total">{{ total }}</span></p>
                         <nav aria-label="Pagination">
                             <ul class="flex flex-wrap items-center gap-1">
                                 {% if page.hasPrevious %}

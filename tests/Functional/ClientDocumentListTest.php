@@ -194,10 +194,13 @@ final class ClientDocumentListTest extends WebTestCase
 
         $crawler = $this->browser->request('GET', '/espace', ['q' => 'bilan', 'statut' => 'failed']);
 
-        $chips = $crawler->filter('[aria-label^="Retirer le filtre"]');
+        $chips = $crawler->filter('[aria-label^="Retirer"]');
         $this->assertCount(2, $chips);
         $this->assertSame('/espace?statut=failed', $chips->eq(0)->attr('href'));
         $this->assertSame('/espace?q=bilan', $chips->eq(1)->attr('href'));
+        $this->assertSame('Retirer la recherche « bilan »', $chips->eq(0)->attr('aria-label'));
+        $this->assertSame('« bilan »', trim($chips->eq(0)->text()));
+        $this->assertSame('Retirer le filtre Statut : Échec de l\'analyse', $chips->eq(1)->attr('aria-label'));
         $this->assertSelectorTextContains('main', 'Effacer les filtres');
         $this->assertSame('failed', $crawler->filter('select[name=statut] option[selected]')->attr('value'));
         $this->assertSame('bilan', $crawler->filter('input[name=q]')->attr('value'));
@@ -252,6 +255,59 @@ final class ClientDocumentListTest extends WebTestCase
         $this->assertCount(2, $links, 'A status without document is not offered.');
         $this->assertStringContainsString('2 · Échec de l\'analyse', $links->eq(1)->text());
         $this->assertSame('/espace?statut=failed', $links->eq(1)->attr('href'));
+    }
+
+    public function testStatusShortcutsKeepTheOtherFiltersAndToggleTheirOwn(): void
+    {
+        $this->document($this->paul, 'a.pdf', status: DocumentStatus::Failed);
+        $this->document($this->paul, 'b.pdf', status: DocumentStatus::Analyzed);
+
+        $crawler = $this->browser->request('GET', '/espace', ['q' => 'a', 'periode' => '2026', 'statut' => 'failed', 'page' => '1']);
+        $links = $crawler->filter('nav[aria-label="Pièces par statut"] a');
+
+        $this->assertSame('/espace?q=a&periode=2026&statut=analyzed', $links->eq(0)->attr('href'), 'Another status replaces the current one, without the page.');
+        $this->assertNull($links->eq(0)->attr('aria-current'));
+        $this->assertSame('/espace?q=a&periode=2026', $links->eq(1)->attr('href'), 'The active status is a toggle.');
+        $this->assertSame('true', $links->eq(1)->attr('aria-current'));
+    }
+
+    public function testTheResultsExposeTheValuesTheServerKept(): void
+    {
+        $this->document($this->paul, 'a.pdf');
+
+        $filters = fn (array $query): mixed => json_decode($this->browser->request('GET', '/espace', $query)->filter('[data-filters]')->attr('data-filters') ?? '', true);
+
+        $this->assertSame([], $filters([]));
+        $this->assertSame(['q' => 'abc'], $filters(['q' => "\x00abc"]));
+        $this->assertSame([], $filters(['q' => "\xFF\xFE"]));
+        $this->assertSame(['statut' => 'failed', 'periode' => '2026-03'], $filters(['statut' => 'failed', 'periode' => '2026-03', 'nature' => 'nope', 'page' => '9']));
+    }
+
+    public function testThePeriodFilterOffersTheMonthsThatHoldDocumentsGroupedByYear(): void
+    {
+        $this->document($this->paul, 'a.pdf', period: ['2025-08-01', '2025-08-31']);
+        $this->document($this->paul, 'b.pdf', period: ['2025-08-01', '2025-08-31']);
+        $this->document($this->paul, 'c.pdf', period: ['2026-03-01', '2026-03-31']);
+        $this->document($this->paul, 'd.pdf');
+        $claire = $this->createClientUser('Micro-crèche Les Petits Pas', 'claire@lespetitspas.test');
+        $this->document($claire, 'e.pdf', period: ['2024-02-01', '2024-02-29']);
+
+        $crawler = $this->browser->request('GET', '/espace');
+
+        $groups = $crawler->filter('select[name=periode] optgroup');
+        $this->assertSame(['Années', 'Mois de 2026', 'Mois de 2025'], $groups->each(static fn (Crawler $group): string => $group->attr('label') ?? ''));
+        $this->assertSame(['2026-03'], $groups->eq(1)->filter('option')->each(static fn (Crawler $option): string => $option->attr('value') ?? ''));
+        $this->assertSame(['2025-08'], $groups->eq(2)->filter('option')->each(static fn (Crawler $option): string => $option->attr('value') ?? ''));
+        $this->assertSame('Août 2025', trim($groups->eq(2)->filter('option')->text()));
+    }
+
+    public function testAnOutOfRangePeriodStaysSelectedInTheForm(): void
+    {
+        $this->document($this->paul, 'a.pdf');
+
+        $crawler = $this->browser->request('GET', '/espace', ['periode' => '2019-04']);
+
+        $this->assertSame('2019-04', $crawler->filter('select[name=periode] option[selected]')->attr('value'));
     }
 
     public function testRowsShowThePeriodWhenThereIsOne(): void
