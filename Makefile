@@ -47,9 +47,11 @@ db.migrate: ## Create the database if needed and run migrations
 	$(EXEC) bin/console doctrine:database:create --if-not-exists
 	$(EXEC) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
-db.reset: ## Drop and recreate the database
+db.reset: ## Drop and recreate the database (the worker is stopped meanwhile: it holds a connection)
+	$(DC) stop worker
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists
 	$(MAKE) db.migrate
+	$(DC) start worker
 
 fixtures: ## Load the demo dataset (purges the database and the stored files first)
 	$(EXEC) bin/console doctrine:fixtures:load --no-interaction --purge-with-truncate --group=demo
