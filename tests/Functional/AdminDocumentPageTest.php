@@ -103,9 +103,8 @@ final class AdminDocumentPageTest extends WebTestCase
         $crawler = $this->browser->request('GET', '/espace/pieces/' . $document->getId());
 
         $this->assertResponseIsSuccessful();
-        $this->assertStringContainsString('Analyse relancée par l\'équipe OWNER', $crawler->filter('#document-page-timeline-' . $document->getId())->text());
+        $this->assertStringContainsString('Analyse relancée par Sophie Laurent (équipe OWNER)', $crawler->filter('#document-page-timeline-' . $document->getId())->text());
         $content = (string) $this->browser->getResponse()->getContent();
-        $this->assertStringNotContainsString('Sophie Laurent', $content);
         $this->assertStringNotContainsString('interrupted', $content);
         $this->assertStringNotContainsString('admin-document-', $content);
     }

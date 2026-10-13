@@ -424,7 +424,7 @@ Un clic ou dix produisent donc une tentative et un message. La base garde le der
 
 ### Historique : ce que voit l'administrateur, ce que voit le client
 
-Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par l'équipe OWNER », causes en langage courant, jamais de nom ni de code), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
+Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par Sophie Laurent (équipe OWNER) » : l'auteur de l'intervention est nommé, mais les causes sont en langage courant, jamais de code ni de numéro de tentative technique), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
 
 ### Temps réel côté admin
 
@@ -459,7 +459,7 @@ Le client ouvre une pièce depuis « Mon dossier » (le nom du fichier est un li
 
 **En-têtes de l'aperçu.** Le `Caddyfile` interdit par défaut tout cadrage (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) ; l'aperçu les remplace (le `?` du Caddyfile laisse la valeur de l'application l'emporter) par `X-Frame-Options: SAMEORIGIN` et `frame-ancestors 'self'` : seules nos pages peuvent l'afficher dans un `<iframe>`. Les images ajoutent `sandbox` (aucun script, origine opaque). Le PDF n'a pas `sandbox` : le lecteur PDF intégré aux navigateurs peut refuser de s'afficher dans une iframe sandboxée (Chromium l'accepte, ce n'est pas garanti ailleurs) ; le fichier n'est de toute façon jamais interprété comme du HTML, puisque le type est détecté côté serveur et que `nosniff` interdit au navigateur d'en deviner un autre. Sur mobile, l'aperçu PDF n'est pas intégré : un bouton l'ouvre dans le lecteur du navigateur.
 
-**Historique.** Il est présenté du plus ancien au plus récent : il se lit comme une histoire, et une nouvelle étape arrive en bas. Les événements ne stockent que des codes ; `App\DocumentPage\ClientTimelinePresenter` en produit le texte pour le client (« Pièce reçue », « Analyse démarrée », « Analyse terminée », « Échec de l'analyse » avec une cause en langage courant, « Analyse relancée par l'équipe OWNER »). Le client ne voit **jamais** le nom de l'administrateur ni de cause technique. La variante admin (cause technique, nom de l'administrateur) sera une autre classe produisant les mêmes `TimelineEntry`.
+**Historique.** Il est présenté du plus ancien au plus récent : il se lit comme une histoire, et une nouvelle étape arrive en bas. Les événements ne stockent que des codes ; `App\DocumentPage\ClientTimelinePresenter` en produit le texte pour le client (« Pièce reçue », « Analyse démarrée », « Analyse terminée », « Échec de l'analyse » avec une cause en langage courant, « Analyse relancée par Sophie Laurent (équipe OWNER) »). Le client voit qui est intervenu, mais **jamais** de cause technique ni de code. La variante admin (`AdminTimelinePresenter` : cause technique, numéros de tentative) produit les mêmes `TimelineEntry`.
 
 ## Direction artistique
 

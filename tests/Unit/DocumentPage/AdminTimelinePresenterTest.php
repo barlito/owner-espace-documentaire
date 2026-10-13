@@ -59,7 +59,7 @@ final class AdminTimelinePresenterTest extends TestCase
         $this->assertCount(\count($forAdmin), $forClient);
         $this->assertSame(array_map(static fn ($e): string => $e->icon, $forAdmin), array_map(static fn ($e): string => $e->icon, $forClient));
         $clientText = implode(' ', array_map(static fn ($e): string => $e->label . ' ' . $e->detail, $forClient));
-        $this->assertStringNotContainsString('Sophie', $clientText);
+        $this->assertStringContainsString('Sophie Laurent (équipe OWNER)', $clientText);
         $this->assertStringNotContainsString('interrupted', $clientText);
     }
 }

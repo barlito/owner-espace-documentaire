@@ -35,8 +35,7 @@ final class DocumentPageStreamsTest extends AnalysisTestCase
 
         $stream = self::getContainer()->get(DocumentStreamRenderer::class)->render($document, false);
 
-        $this->assertStringContainsString('Analyse relancée par l&#039;équipe OWNER', $stream);
-        $this->assertStringNotContainsString('Sophie', $stream);
+        $this->assertStringContainsString('Analyse relancée par Sophie Laurent (équipe OWNER)', $stream);
     }
 
     public function testACreationDoesNotTouchThePageOfTheDocument(): void

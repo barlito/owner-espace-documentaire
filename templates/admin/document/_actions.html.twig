@@ -8,7 +8,7 @@
             <h2 class="text-lg">Relancer l'analyse</h2>
             <p class="mt-1 text-sm text-gray-500">
                 Crée une nouvelle tentative (n° {{ document.currentAttempt.number + 1 }}) sur la même pièce.
-                Le client verra « Analyse relancée par l'équipe OWNER », sans votre nom.
+                Le client verra votre nom dans l'historique de sa pièce, sans la raison technique.
             </p>
 
             {% if reason is same as constant('App\\Enum\\FailureReason::UnreadableFile') %}
