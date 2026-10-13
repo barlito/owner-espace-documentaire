@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Analysis\AnalyzeDocument;
 use App\Entity\Document;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 final class UploadTest extends WebTestCase
 {
@@ -58,6 +60,31 @@ final class UploadTest extends WebTestCase
         $this->assertSelectorTextContains('main', 'Bilan, comptes annuels ou liasse fiscale');
         $this->assertSelectorTextContains('main', 'En attente d\'analyse');
         $this->assertSelectorTextNotContains('main', 'Votre dossier est encore vide');
+    }
+
+    public function testAnUploadQueuesExactlyOneAnalysis(): void
+    {
+        $this->browser->loginUser($this->createClientUser());
+
+        $this->postFile('sample.pdf', 'Bilan 2024.pdf', ['_token' => $this->tokenFromUploadPage()]);
+
+        $this->assertResponseStatusCodeSame(201);
+        $transport = static::getContainer()->get('messenger.transport.async');
+        $this->assertInstanceOf(InMemoryTransport::class, $transport);
+        $this->assertCount(1, $transport->getSent());
+        $this->assertInstanceOf(AnalyzeDocument::class, $transport->getSent()[0]->getMessage());
+    }
+
+    public function testARefusedFileQueuesNothing(): void
+    {
+        $this->browser->loginUser($this->createClientUser());
+
+        $this->postFile('sample.txt', 'notes.txt', ['_token' => $this->tokenFromUploadPage()]);
+
+        $this->assertResponseStatusCodeSame(422);
+        $transport = static::getContainer()->get('messenger.transport.async');
+        $this->assertInstanceOf(InMemoryTransport::class, $transport);
+        $this->assertSame([], $transport->getSent());
     }
 
     public function testUncategorizedDocumentShowsItsSizeAndDate(): void
