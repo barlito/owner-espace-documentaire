@@ -1,0 +1,3 @@
+{# Analysis status of a file just uploaded, shown in the upload list and replaced live. #}
+{% set status = document.status %}
+<span id="upload-status-{{ document.id }}"><twig:Badge variant="{{ status.badgeVariant }}" icon="{{ status.icon }}">{{ status.label }}</twig:Badge></span>

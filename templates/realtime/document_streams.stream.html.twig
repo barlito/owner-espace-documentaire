@@ -1,0 +1,26 @@
+{# Turbo Stream actions for one document, published on its client's private topic. A target that is not on the
+   page the browser is showing is silently ignored by Turbo: each page only reacts to what it contains. #}
+
+{# Client dashboard ("Mon dossier") #}
+{% if created %}
+    {# Removing first makes the insertion idempotent: the page may have been loaded after the upload committed. #}
+    <turbo-stream action="remove" target="dashboard-empty"></turbo-stream>
+    <turbo-stream action="remove" target="document-{{ document.id }}"></turbo-stream>
+    <turbo-stream action="prepend" target="dashboard-documents">
+        <template>{{ include('client/_document_row.html.twig', {highlight: true}) }}</template>
+    </turbo-stream>
+{% else %}
+    <turbo-stream action="replace" target="document-{{ document.id }}">
+        <template>{{ include('client/_document_row.html.twig', {highlight: true}) }}</template>
+    </turbo-stream>
+{% endif %}
+
+{# Upload page: status of the files sent from this page #}
+<turbo-stream action="replace" target="upload-status-{{ document.id }}">
+    <template>{{ include('client/_upload_status.html.twig') }}</template>
+</turbo-stream>
+
+{# Announcement for screen readers, in the page's single live region (templates/base.html.twig) #}
+<turbo-stream action="update" target="live-status">
+    <template>{{ document.originalFilename }} : {{ created ? 'pièce reçue' : document.status.announcement }}.</template>
+</turbo-stream>

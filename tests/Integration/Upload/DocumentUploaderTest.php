@@ -11,6 +11,7 @@ use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
 use App\Message\StartAnalysis;
+use App\Tests\Support\SentMessages;
 use App\Upload\DocumentUploader;
 use App\Upload\UploadPolicy;
 use App\Upload\UploadRejected;
@@ -81,7 +82,7 @@ final class DocumentUploaderTest extends KernelTestCase
 
         $transport = static::getContainer()->get('messenger.transport.async');
         $this->assertInstanceOf(InMemoryTransport::class, $transport);
-        $sent = $transport->getSent();
+        $sent = SentMessages::analysis($transport);
         $this->assertCount(1, $sent);
         $message = $sent[0]->getMessage();
         $this->assertInstanceOf(StartAnalysis::class, $message);

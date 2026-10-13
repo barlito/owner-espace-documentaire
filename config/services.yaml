@@ -42,3 +42,15 @@ services:
             $globalFactory: '@limiter.login_ip'
             $localFactory: '@limiter.login_ip_username'
             $secret: '%kernel.secret%'
+
+when@test:
+    services:
+        # Tests never reach the hub: published updates are recorded instead (tests/Support/PublishedUpdates.php).
+        App\Tests\Support\PublishedUpdates:
+            public: true
+
+        mercure.hub.default.test:
+            class: Symfony\Component\Mercure\HubInterface
+            decorates: mercure.hub.default
+            factory: ['App\Tests\Support\PublishedUpdates', 'hub']
+            arguments: ['@.inner', '@App\Tests\Support\PublishedUpdates']

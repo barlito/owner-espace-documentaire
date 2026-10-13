@@ -8,6 +8,8 @@ use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\DocumentEvent;
 use App\Entity\User;
+use App\Message\PublishDocumentUpdate;
+use App\Tests\Support\SentMessages;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\ClockInterface;
@@ -71,13 +73,28 @@ abstract class AnalysisTestCase extends KernelTestCase
     }
 
     /**
+     * The analysis messages sent so far (the live updates have their own tests, see SentMessages).
+     *
      * @return list<Envelope>
      */
     protected function sent(): array
     {
+        return SentMessages::analysis($this->transport());
+    }
+
+    /**
+     * @return list<PublishDocumentUpdate>
+     */
+    protected function publications(): array
+    {
+        return SentMessages::publications($this->transport());
+    }
+
+    private function transport(): InMemoryTransport
+    {
         $transport = self::getContainer()->get('messenger.transport.async');
         \assert($transport instanceof InMemoryTransport);
 
-        return array_values($transport->getSent());
+        return $transport;
     }
 }

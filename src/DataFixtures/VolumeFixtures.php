@@ -9,6 +9,7 @@ use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentType;
 use App\Enum\FailureReason;
+use App\EventListener\QueueDocumentUpdateListener;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -47,6 +48,7 @@ final class VolumeFixtures extends Fixture implements DependentFixtureInterface,
     public function __construct(
         private readonly DocumentFactory $factory,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly QueueDocumentUpdateListener $liveUpdates,
     ) {
         $this->random = new Randomizer(new Mt19937(42));
     }
@@ -63,6 +65,7 @@ final class VolumeFixtures extends Fixture implements DependentFixtureInterface,
 
     public function load(ObjectManager $manager): void
     {
+        $this->liveUpdates->mute();
         $now = now();
 
         try {

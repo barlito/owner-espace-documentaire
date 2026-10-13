@@ -21,15 +21,20 @@ framework:
 
         # The bus shares the Doctrine connection with the transport: the handler's flush and the messages it
         # dispatches are committed (or rolled back) together.
+        default_bus: messenger.bus.default
         buses:
             messenger.bus.default:
                 middleware:
                     - doctrine_ping_connection
                     - doctrine_transaction
+            # Used by App\EventListener\QueueDocumentUpdateListener from inside a Doctrine flush: no
+            # doctrine_transaction here, its flush after dispatching would re-enter the flush being completed.
+            messenger.bus.realtime: ~
 
         routing:
             'App\Message\StartAnalysis': async
             'App\Message\CheckAnalysisOutcome': async
+            'App\Message\PublishDocumentUpdate': async
 
 when@test:
     framework:

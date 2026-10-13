@@ -9,6 +9,7 @@ use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
 use App\EventListener\FailAnalysisOnGivenUpMessageListener;
 use App\Message\CheckAnalysisOutcome;
+use App\Message\PublishDocumentUpdate;
 use App\Message\StartAnalysis;
 use App\MessageHandler\StartAnalysisHandler;
 use App\Tests\Integration\AnalysisTestCase;
@@ -67,6 +68,15 @@ final class FailAnalysisOnGivenUpMessageListenerTest extends AnalysisTestCase
         $document = $this->createDocument();
 
         $this->giveUp(new \stdClass());
+
+        $this->assertSame(DocumentStatus::Pending, $this->reload($document)->getStatus());
+    }
+
+    public function testAGivenUpLiveUpdateLeavesTheAnalysisAlone(): void
+    {
+        $document = $this->createDocument();
+
+        $this->giveUp(new PublishDocumentUpdate($document->getId()));
 
         $this->assertSame(DocumentStatus::Pending, $this->reload($document)->getStatus());
     }

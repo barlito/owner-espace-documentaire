@@ -9,6 +9,7 @@ use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentType;
 use App\Enum\FailureReason;
+use App\EventListener\QueueDocumentUpdateListener;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -38,8 +39,10 @@ final class DemoDocumentFixtures extends Fixture implements DependentFixtureInte
 
     private Randomizer $random;
 
-    public function __construct(private readonly DocumentFactory $factory)
-    {
+    public function __construct(
+        private readonly DocumentFactory $factory,
+        private readonly QueueDocumentUpdateListener $liveUpdates,
+    ) {
         $this->random = new Randomizer(new Mt19937(7));
     }
 
@@ -55,6 +58,7 @@ final class DemoDocumentFixtures extends Fixture implements DependentFixtureInte
 
     public function load(ObjectManager $manager): void
     {
+        $this->liveUpdates->mute();
         $now = now();
         $admin = $this->getReference(AccountFixtures::ADMIN, User::class);
 
