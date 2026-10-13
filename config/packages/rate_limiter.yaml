@@ -1,0 +1,13 @@
+framework:
+    rate_limiter:
+        # 5 failed logins from one IP, whatever the accounts tried, block that IP for the window.
+        # Only failures are counted: switching between accounts never throttles anyone.
+        login_ip:
+            policy: sliding_window
+            limit: 5
+            interval: '5 minutes'
+        # Required by DefaultLoginRateLimiter; with the same limit it is covered by the IP limiter.
+        login_ip_username:
+            policy: sliding_window
+            limit: 5
+            interval: '5 minutes'
