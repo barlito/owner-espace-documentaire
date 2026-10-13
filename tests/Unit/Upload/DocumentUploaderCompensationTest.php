@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Upload;
 
+use App\Analysis\AnalysisQueue;
 use App\Entity\Client;
-use App\Entity\Document;
 use App\Entity\User;
 use App\Upload\DocumentUploader;
 use App\Upload\MimeTypeResolver;
@@ -16,6 +16,7 @@ use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Validator\Validation;
 
 final class DocumentUploaderCompensationTest extends TestCase
@@ -24,8 +25,7 @@ final class DocumentUploaderCompensationTest extends TestCase
     {
         $failure = new \RuntimeException('database down');
         $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects($this->once())->method('persist')->with($this->isInstanceOf(Document::class));
-        $entityManager->expects($this->once())->method('flush')->willThrowException($failure);
+        $entityManager->expects($this->once())->method('wrapInTransaction')->willThrowException($failure);
 
         $storage = new Filesystem(new InMemoryFilesystemAdapter());
         $uploader = new DocumentUploader(
@@ -33,6 +33,7 @@ final class DocumentUploaderCompensationTest extends TestCase
             new UploadPolicy(),
             new MimeTypeResolver(),
             $entityManager,
+            new AnalysisQueue(new MessageBus()),
             $storage,
             new NullLogger(),
         );

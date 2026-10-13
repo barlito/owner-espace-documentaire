@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\Analysis\Simulation\AnalysisSimulator;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;
@@ -28,6 +29,7 @@ final class DocumentFactory
     private const array MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
     private readonly Randomizer $random;
+    private readonly AnalysisSimulator $simulator;
 
     /** @var array<string, string> */
     private array $images = [];
@@ -35,6 +37,8 @@ final class DocumentFactory
     public function __construct(private readonly FilesystemOperator $documentsStorage)
     {
         $this->random = new Randomizer(new Mt19937(42));
+        // Own seeded randomizer: fixture results are reproducible and independent from the timing draws above.
+        $this->simulator = new AnalysisSimulator(new Randomizer(new Mt19937(42)));
     }
 
     public static function monthName(\DateTimeImmutable $date): string
@@ -77,7 +81,7 @@ final class DocumentFactory
     public function start(Document $document): void
     {
         $this->advance($this->random->getInt(3, 20));
-        $document->startAnalysis();
+        $document->startAnalysis(\sprintf('fixture:%s', $document->getCurrentAttempt()->getId()->toRfc4122()));
     }
 
     public function finish(Document $document, ?FailureReason $failure = null): void
@@ -85,28 +89,10 @@ final class DocumentFactory
         $this->advance($this->random->getInt(20, 90));
 
         if (null === $failure) {
-            $document->completeAnalysis($this->analysisResult($document));
+            $document->completeAnalysis($this->simulator->result($document));
         } else {
             $document->failAnalysis($failure);
         }
-    }
-
-    /**
-     * Placeholder payload: the real structure is defined by the analysis itself.
-     *
-     * @return array<string, mixed>
-     */
-    private function analysisResult(Document $document): array
-    {
-        $type = $document->getType() ?? DocumentType::Other;
-
-        return [
-            'detectedType' => $type->value,
-            'periodStart' => $document->getPeriodStart()?->format('Y-m-d'),
-            'periodEnd' => $document->getPeriodEnd()?->format('Y-m-d'),
-            'summary' => \sprintf('Document « %s » reconnu : %s.', $document->getOriginalFilename(), mb_strtolower($type->label())),
-            'confidence' => $this->random->getInt(80, 99) / 100,
-        ];
     }
 
     private function image(string $extension): string

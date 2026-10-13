@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
+use App\Message\StartAnalysis;
 use App\Upload\DocumentUploader;
 use App\Upload\UploadPolicy;
 use App\Upload\UploadRejected;
@@ -17,6 +18,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 final class DocumentUploaderTest extends KernelTestCase
 {
@@ -71,6 +73,21 @@ final class DocumentUploaderTest extends KernelTestCase
 
         $this->assertMatchesRegularExpression('#^' . $stored->getClient()->getId()->toRfc4122() . '/[0-9a-f-]{36}$#', $stored->getStorageKey());
         $this->assertSame(file_get_contents($path), $this->storage->read($stored->getStorageKey()));
+    }
+
+    public function testTheAnalysisOfTheFirstAttemptIsQueuedExactlyOnce(): void
+    {
+        $document = $this->uploader->upload($this->upload('sample.pdf', 'releve.pdf'), $this->user, null);
+
+        $transport = static::getContainer()->get('messenger.transport.async');
+        $this->assertInstanceOf(InMemoryTransport::class, $transport);
+        $sent = $transport->getSent();
+        $this->assertCount(1, $sent);
+        $message = $sent[0]->getMessage();
+        $this->assertInstanceOf(StartAnalysis::class, $message);
+        $this->assertTrue($document->getId()->equals($message->documentId));
+        $this->assertTrue($document->getCurrentAttempt()->getId()->equals($message->attemptId));
+        $this->assertNotNull($document->getCurrentAttempt()->getQueuedAt());
     }
 
     public function testTheTypeIsOptional(): void

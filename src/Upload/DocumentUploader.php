@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Upload;
 
+use App\Analysis\AnalysisQueue;
 use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentType;
@@ -25,6 +26,7 @@ final readonly class DocumentUploader
         private UploadPolicy $policy,
         private MimeTypeResolver $mimeTypeResolver,
         private EntityManagerInterface $entityManager,
+        private AnalysisQueue $analysisQueue,
         private FilesystemOperator $documentsStorage,
         private LoggerInterface $logger,
     ) {
@@ -64,8 +66,11 @@ final readonly class DocumentUploader
                 $sha256,
                 $type,
             );
-            $this->entityManager->persist($document);
-            $this->entityManager->flush();
+            // The document and its analysis message commit together: no document without analysis, no orphan message.
+            $this->entityManager->wrapInTransaction(function () use ($document): void {
+                $this->entityManager->persist($document);
+                $this->analysisQueue->enqueue($document);
+            });
         } catch (\Throwable $e) {
             $this->discard($storageKey);
 

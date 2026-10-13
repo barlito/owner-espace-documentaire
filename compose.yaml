@@ -1,28 +1,48 @@
 name: owner-docs
 
+# Shared by php and worker: same image, same code, same environment.
+x-php: &php
+    image: ${COMPOSE_PROJECT_NAME:-owner-docs}-php
+    build:
+        context: .
+        dockerfile: .docker/Dockerfile
+        target: frankenphp_dev
+        args:
+            USER_ID: ${USER_ID:-1000}
+            GROUP_ID: ${GROUP_ID:-1000}
+    environment:
+        SERVER_NAME: ":80"
+        TZ: Europe/Paris
+    volumes:
+        - ./:/app
+        - ./.docker/franken/Caddyfile:/etc/caddy/Caddyfile:ro
+        - composer_cache:/home/www/.composer
+        - caddy_data:/data
+        - caddy_config:/config
+    depends_on:
+        database:
+            condition: service_healthy
+
 services:
     php:
-        build:
-            context: .
-            dockerfile: .docker/Dockerfile
-            target: frankenphp_dev
-            args:
-                USER_ID: ${USER_ID:-1000}
-                GROUP_ID: ${GROUP_ID:-1000}
-        environment:
-            SERVER_NAME: ":80"
-            TZ: Europe/Paris
+        <<: *php
         ports:
             - "${HTTP_PORT:-8000}:80"
+
+    # Consumes the async queue and the analysis schedule. A long-running process does not reload the code:
+    # restart it after a change (make worker.restart). It is also recycled hourly or at 128M by Messenger itself.
+    worker:
+        <<: *php
+        command: ["php", "bin/console", "messenger:consume", "async", "scheduler_analysis", "--time-limit=3600", "--memory-limit=128M", "-vv"]
+        restart: unless-stopped
+        # Only the code: the Caddy volumes belong to php. Sharing them made the two containers race to
+        # initialise the same new volume on a fresh machine (CI), and one of them failed to start.
         volumes:
             - ./:/app
-            - ./.docker/franken/Caddyfile:/etc/caddy/Caddyfile:ro
-            - composer_cache:/home/www/.composer
-            - caddy_data:/data
-            - caddy_config:/config
-        depends_on:
-            database:
-                condition: service_healthy
+        # The image healthcheck probes Caddy, which the worker does not run. Without a healthcheck the worker
+        # cannot be awaited by "up --wait": make up waits for php and database, then starts it.
+        healthcheck:
+            disable: true
 
     database:
         image: postgres:18-alpine

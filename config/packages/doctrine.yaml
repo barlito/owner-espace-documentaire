@@ -7,6 +7,11 @@ doctrine:
         #server_version: '16'
 
         profiling_collect_backtrace: '%kernel.debug%'
+
+        # The queue table belongs to Messenger and is created by a hand-written migration (no auto setup).
+        # Left out of the schema comparison, otherwise it would be reported as an extra table in the test
+        # environment, where the transport is in-memory.
+        schema_filter: '~^(?!messenger_messages$)~'
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

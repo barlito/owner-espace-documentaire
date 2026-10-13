@@ -1,0 +1,39 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    # The worker looks for delayed messages (the simulated analysis work) at this interval, in ms.
+                    # The default is 60 s, which would add up to a minute to every simulated analysis.
+                    check_delayed_interval: 1000
+                retry_strategy:
+                    # Technical errors only: business outcomes (simulated failures) are not exceptions.
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 3
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: failed
+
+        # The bus shares the Doctrine connection with the transport: the handler's flush and the messages it
+        # dispatches are committed (or rolled back) together.
+        buses:
+            messenger.bus.default:
+                middleware:
+                    - doctrine_ping_connection
+                    - doctrine_transaction
+
+        routing:
+            'App\Message\StartAnalysis': async
+            'App\Message\CheckAnalysisOutcome': async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'in-memory://'
+                failed: 'in-memory://'

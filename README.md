@@ -61,7 +61,8 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Commande | Rôle |
 | --- | --- |
 | `make help` | Liste toutes les commandes |
-| `make up` / `make down` | Démarre / arrête la stack |
+| `make up` / `make down` | Démarre / arrête la stack (dont le worker) |
+| `make worker.restart` / `make worker.logs` | Redémarre le worker (un process long ne recharge pas le code) / suit ses logs |
 | `make sh` | Shell dans le conteneur PHP |
 | `make test` | Recrée la base de test, valide le schéma Doctrine et lance PHPUnit |
 | `make lint` | Vérifie le style (PHP-CS-Fixer) et lance l'analyse statique (PHPStan) |
@@ -85,6 +86,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
 | Horloge | **`symfony/clock`** | Les entités lisent l'heure via `now()` : identique en production, mais les fixtures (et les tests) peuvent figer ou avancer l'horloge pour produire un historique daté de façon cohérente, sans setter ni réflexion. |
+| Messagerie | **Symfony Messenger** (transport Doctrine) + **Scheduler** | File d'analyse dans PostgreSQL, sans service supplémentaire. Voir « Analyse simulée ». |
 | Stockage | **Flysystem** (`league/flysystem-bundle`) | Les fichiers passent par une abstraction : disque local aujourd'hui (`var/storage/documents`, hors de `public/`), adaptateur mémoire en test, un bucket S3 demain sans toucher au code métier. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 
@@ -141,6 +143,100 @@ Chaque changement passe par une méthode de `Document` (`startAnalysis`, `comple
 - **Interface** : un envoi = une requête par fichier (progression par fichier, un refus n'empêche pas les autres), deux envois en parallèle. Sans JavaScript, le formulaire reste fonctionnel (`files[]` en une seule requête, `post_max_size = 100M`), et chaque fichier est traité indépendamment.
 - Les limites PHP sont dans `.docker/php/app.ini` (`upload_max_filesize = 20M`, `post_max_size = 100M`, `max_file_uploads = 20`).
 
+## Analyse simulée
+
+Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement), exécutée en asynchrone par un worker (`make up` le démarre ; `make worker.logs` pour le suivre).
+
+### Déroulé
+
+L'analyse passe par l'interface `App\Analysis\Provider\Interface\AnalysisProviderInterface`, calquée sur un fournisseur tiers asynchrone (OCR, IA) : on lui **soumet** le document, il répond par une **référence**, puis on **vient chercher le résultat** avec cette référence. La seule implémentation aujourd'hui est `SimulatedAnalysisProvider`.
+
+1. **Dépôt** : le document et le message `StartAnalysis` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
+2. **Démarrage** (`StartAnalysisHandler`) : le worker verrouille le document (`SELECT … FOR UPDATE`), le soumet au fournisseur (`submit()`), enregistre la référence sur la tentative (`provider_reference`), passe le document « en cours » et programme le message `CheckAnalysisOutcome` après le délai indiqué par le fournisseur. Il n'y a **aucun `sleep()`** : le worker reste libre pour les autres documents.
+3. **Résultat** (`CheckAnalysisOutcomeHandler`) : le worker demande où en est l'analyse (`fetchOutcome()`) :
+   - **toujours en cours** → le même message est renvoyé avec le délai indiqué (interrogation périodique, toutes les 20 s pour une analyse longue simulée) ;
+   - **réussie** → le résultat est enregistré (JSON : type détecté, période, résumé, champs, confiance). Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse ;
+   - **échouée** → l'échec et sa raison sont enregistrés.
+
+Les doublons et messages tardifs sont sans effet : chaque message porte l'identifiant de la tentative, et le handler ignore le message si le document n'est plus dans l'état attendu. Un fournisseur qui ne répond jamais est borné par la réconciliation (`ANALYSIS_STALE_AFTER`).
+
+Le simulateur ne garde aucun état : le scénario tiré à la soumission est écrit dans la référence (`sim:<tentative>:<issue>:<prêt à>`), comme un vrai fournisseur le conserverait de son côté.
+
+### Brancher un vrai fournisseur
+
+Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProviderInterface`, avec le client HTTP de Symfony et la conversion de la réponse du fournisseur en `AnalysisResult` / `FailureReason`, puis l'alias de `App\Analysis\Provider\Interface\AnalysisProviderInterface` dans `config/services.yaml`. Points d'attention, déjà prévus par le contrat :
+
+- **Idempotence** : si la soumission réussit mais que la transaction échoue ensuite, Messenger rejoue le message ; l'identifiant de la tentative sert de clé d'idempotence auprès du fournisseur pour éviter une double soumission.
+- **Appel HTTP sous verrou** : `submit()` et `fetchOutcome()` s'exécutent dans la transaction du worker, ligne verrouillée : timeout court. Pour un fournisseur lent, isoler la soumission dans son propre message.
+- **Erreurs** : une erreur technique (fournisseur indisponible) est une exception → Messenger rejoue le message, puis la tentative passe en échec (voir la réconciliation). Un document que le fournisseur refuse est un `AnalysisOutcome::failed()`.
+- **Webhook plutôt que polling** : si le fournisseur notifie la fin d'analyse, un contrôleur retrouve la tentative par `provider_reference` et envoie `CheckAnalysisOutcome` ; l'interrogation périodique reste le filet de sécurité. Ajouter alors un index sur `provider_reference`.
+- **Délai maximal** : `ANALYSIS_STALE_AFTER` doit dépasser le temps de traitement garanti par le fournisseur.
+
+### Scénarios
+
+| Cas | Probabilité | Durée simulée |
+| --- | --- | --- |
+| Succès rapide | 75 % | 3 à 12 s |
+| Succès long | 10 % | 60 à 120 s |
+| Échec (fichier illisible, format non pris en charge, inconnu) | 15 % | 3 à 12 s |
+
+- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques.
+- **Relance** : une tentative n°2 ou plus réussit toujours, **sauf** si la précédente a échoué sur un fichier illisible (une relance ne répare pas un fichier).
+- L'échec « interrompu » n'est jamais tiré au sort : il est réservé à la réconciliation.
+
+### Réconciliation
+
+Un message envoyé ne peut pas se perdre : il est écrit dans la même transaction que le document (voir plus bas). Restent trois cas, chacun traité sans minuterie sur les documents en attente, pour qu'un document qui attend simplement son tour dans une file chargée ne soit jamais renvoyé :
+
+- **un message qui plante à chaque fois** (bug, donnée corrompue) : Messenger le rejoue 3 fois avec un délai croissant, puis l'abandonne. À cet instant, `FailAnalysisOnGivenUpMessageListener` passe la tentative en échec (cause inconnue) : le document apparaît parmi les échecs, un administrateur peut le relancer. Le message reste consultable dans la file `failed` (`messenger:failed:show`) ; le rejouer plus tard est sans effet, la tentative n'étant plus la tentative courante ;
+- **un document créé sans message** (fixtures de démonstration) : le Scheduler lance `ReconcileAnalyses` toutes les minutes (aussi disponible à la main : `make console c="app:analysis:reconcile"`), qui met en file les tentatives en attente jamais envoyées (`queued_at` vide) ;
+- **un worker mort en plein traitement**, ou un message de fin perdu : la même réconciliation passe en échec « interrompu » une tentative « en cours » depuis plus de `ANALYSIS_STALE_AFTER` secondes.
+
+Au plus `ANALYSIS_RECONCILE_BATCH` documents par type et par passage, les plus anciens d'abord ; un index partiel (`idx_document_unfinished`) évite de parcourir tout l'historique.
+
+| Variable | Défaut | Rôle |
+| --- | --- | --- |
+| `ANALYSIS_RECONCILE_INTERVAL` | `1 minute` | Fréquence de la réconciliation |
+| `ANALYSIS_STALE_AFTER` | `600` | Secondes avant d'interrompre une analyse en cours. Doit dépasser la plus longue analyse du fournisseur (120 s pour le simulateur, déclarée dans `config/services.yaml`) : sinon le worker refuse de démarrer |
+| `ANALYSIS_RECONCILE_BATCH` | `100` | Documents traités par type et par passage |
+
+**Évolution possible : la base indisponible au moment de l'abandon.** Si la base tombe pendant que Messenger abandonne un message, le listener ne peut pas écrire l'échec non plus : le document reste « en attente » (ou « en cours », et la réconciliation finira par l'interrompre). Une commande pourrait chercher les documents en attente depuis plusieurs heures pour alerter l'équipe ou les remettre en file automatiquement. Elle n'est pas faite : le cas suppose une panne de la base, et le message reste de toute façon dans la file `failed`.
+
+**À faire évoluer : plusieurs workers.** Le Scheduler tourne dans chaque worker : avec plusieurs workers, chacun lance sa propre réconciliation, et plusieurs passages peuvent viser le même document en même temps. C'est sans conséquence (chaque document est verrouillé puis revérifié avant d'être modifié, le second passage ne fait donc rien), mais c'est du travail en double et de l'attente sur les verrous. Pour passer à plusieurs workers, il faudra n'exécuter la réconciliation qu'une fois par intervalle : un verrou sur le schedule (`Schedule::lock()` avec le composant Lock), ou un worker dédié au seul transport `scheduler_analysis`.
+
+Reprises techniques : les exceptions (base indisponible…) sont rejouées 3 fois avec un délai croissant, puis le message part en file `failed` (`messenger:failed:show`). Ce n'est pas le cas des échecs simulés, qui sont des résultats métier.
+
+### Pourquoi le transport Doctrine
+
+- **Une stack plus simple** : la file est une table PostgreSQL, pas de broker à déployer ni à superviser ; le worker écoute les nouveaux messages via `LISTEN/NOTIFY` (pas de polling).
+- **Envoi atomique avec l'écriture en base** : le transport utilise la même connexion que l'ORM, donc le document et son message (ou, dans un handler, la mise à jour et les messages suivants) sont validés ou annulés ensemble, sans pattern outbox.
+- Le prix : la file partage la base et ne passe pas à l'échelle d'un vrai broker. Nous restons sur Doctrine pour la simplicité de la stack.
+
+La table `messenger_messages` est créée par une migration (`auto_setup=0`) et ignorée par la validation du schéma (`schema_filter`).
+
+### Passer à RabbitMQ
+
+1. `composer require symfony/amqp-messenger` ; dans le `Dockerfile`, ajouter `amqp` à la liste `install-php-extensions`.
+2. Un service dans `compose.yaml` (et `depends_on` sur `rabbitmq` pour `worker`) :
+
+```yaml
+rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+        - "15672:15672" # interface d'administration
+    healthcheck:
+        test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 10
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+```
+
+3. `MESSENGER_TRANSPORT_DSN=amqp://guest:guest@rabbitmq:5672/%2f/messages`. Garder `failed` sur Doctrine (`doctrine://default?queue_name=failed&auto_setup=0`) ou l'adapter de même.
+
+(Déclarer aussi le volume `rabbitmq_data`.) Ce qu'on perd : l'envoi n'est **plus atomique** avec l'écriture en base (un crash entre le commit et la publication perd le message ; l'inverse, publier avant un commit qui échoue, est géré par les handlers qui ignorent ce qu'ils ne reconnaissent pas). Il faut soit un pattern outbox, soit accepter la réconciliation comme filet de sécurité : elle remet déjà en file les documents jamais pris en charge, c'est donc suffisant ici.
+
 ## Direction artistique
 
 L'interface reprend la DA du site [ownertechnology.com](https://ownertechnology.com/) : les couleurs, le rayon (`10px`) et les échelles de nuances sont relevés directement dans le CSS du site.
@@ -173,5 +269,22 @@ config/         Configuration Symfony
 src/            Code applicatif
 templates/      Templates Twig (components/ : composants d'interface)
 tests/          Tests PHPUnit
-compose.yaml    Stack locale (php + database)
+compose.yaml    Stack locale (php, worker, database)
 ```
+
+### Organisation du code
+
+Une seule règle : **ce que le framework appelle va dans les dossiers standard de Symfony, le code métier qu'ils appellent est rangé par fonctionnalité.**
+
+```
+src/
+├── Command/  Controller/  EventListener/  Message/  MessageHandler/  Scheduler/   points d'entrée
+├── Entity/  Enum/  Exception/  Repository/                                       modèle et persistance
+├── Security/  Twig/  DataFixtures/
+├── Upload/      métier du dépôt : politique, détection du format, enregistrement
+└── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
+    ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/
+    └── Simulation/   l'implémentation simulée du fournisseur (scénario, lecture du nom de fichier)
+```
+
+Ce sont les dossiers que créent les générateurs de Symfony (`make:message`, `make:command`…) : un développeur Symfony s'y retrouve sans explication. Une architecture hexagonale (domaine sans dépendance au framework, ports et adapters) a été écartée : pour un MVP avec une seule base, un seul transport et un seul stockage, elle multiplierait les fichiers sans bénéfice, au détriment de la facilité de reprise. Les règles métier restent malgré tout isolées : dans les entités (transitions de `Document`) et dans `Upload/` et `Analysis/`, sans dépendance aux contrôleurs ni aux handlers.

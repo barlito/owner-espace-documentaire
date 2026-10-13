@@ -51,6 +51,22 @@ class AnalysisAttempt
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE)]
     private \DateTimeImmutable $requestedAt;
 
+    /**
+     * When the analysis message was sent. Null only for an attempt whose message was never sent (demo fixtures,
+     * data from before the queue existed): the reconciliation queues those. A sent message cannot be lost, since it is
+     * written in the same transaction as the attempt; a message Messenger gives up on fails the attempt instead
+     * (see FailAnalysisOnGivenUpMessageListener).
+     */
+    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $queuedAt = null;
+
+    /**
+     * Identifies the analysis on the provider side (see AnalysisProviderInterface): set when the attempt starts, used to
+     * fetch its outcome, and the key to find the attempt back from a provider webhook or for support.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $providerReference = null;
+
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
 
@@ -78,10 +94,20 @@ class AnalysisAttempt
     /**
      * @internal only Document may drive an attempt, so that status and timeline stay in sync
      */
-    public function start(): void
+    public function markQueued(): void
+    {
+        $this->assertStatus(AttemptStatus::Pending);
+        $this->queuedAt = now();
+    }
+
+    /**
+     * @internal only Document may drive an attempt, so that status and timeline stay in sync
+     */
+    public function start(string $providerReference): void
     {
         $this->assertStatus(AttemptStatus::Pending);
         $this->status = AttemptStatus::Running;
+        $this->providerReference = $providerReference;
         $this->startedAt = now();
     }
 
@@ -103,7 +129,10 @@ class AnalysisAttempt
      */
     public function fail(FailureReason $reason): void
     {
-        $this->assertStatus(AttemptStatus::Running);
+        // An attempt can also be given up before it ever started (its message never got through).
+        if (AttemptStatus::Pending !== $this->status) {
+            $this->assertStatus(AttemptStatus::Running);
+        }
         $this->status = AttemptStatus::Failed;
         $this->failureReason = $reason;
         $this->finishedAt = now();
@@ -137,6 +166,16 @@ class AnalysisAttempt
     public function getRequestedAt(): \DateTimeImmutable
     {
         return $this->requestedAt;
+    }
+
+    public function getQueuedAt(): ?\DateTimeImmutable
+    {
+        return $this->queuedAt;
+    }
+
+    public function getProviderReference(): ?string
+    {
+        return $this->providerReference;
     }
 
     public function getStartedAt(): ?\DateTimeImmutable

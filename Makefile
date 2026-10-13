@@ -3,22 +3,25 @@
 DC   = docker compose
 EXEC = $(DC) exec -T php
 
-.PHONY: help install up down build sh logs composer console db.migrate db.reset fixtures fixtures.volume assets watch test lint fix phpstan cs cs.fix
+.PHONY: help install up down build sh logs worker.restart worker.logs composer console db.migrate db.reset fixtures fixtures.volume assets watch test lint fix phpstan cs cs.fix
 
 help: ## List available commands
-	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-install: build up ## Full install (build, start, dependencies, assets, database, demo dataset)
+install: build ## Full install (build, start, dependencies, assets, database, demo dataset, worker)
+	$(DC) up -d --wait php database
 	$(EXEC) composer install --no-interaction
 	$(MAKE) assets
 	$(MAKE) db.migrate
 	$(MAKE) fixtures
+	$(MAKE) up
 
 build: ## Build the PHP image
 	$(DC) build
 
-up: ## Start the stack (http://localhost:8000)
-	$(DC) up -d --wait
+up: ## Start the stack with its worker (http://localhost:8000)
+	$(DC) up -d --wait php database
+	$(DC) up -d worker
 
 down: ## Stop the stack
 	$(DC) down
@@ -28,6 +31,12 @@ sh: ## Open a shell in the PHP container
 
 logs: ## Follow the stack logs
 	$(DC) logs -f
+
+worker.restart: ## Restart the worker (a long-running process does not reload code changes)
+	$(DC) restart worker
+
+worker.logs: ## Follow the worker logs
+	$(DC) logs -f worker
 
 composer: ## Run composer (e.g. make composer c="require foo/bar")
 	$(EXEC) composer $(c)
@@ -39,9 +48,11 @@ db.migrate: ## Create the database if needed and run migrations
 	$(EXEC) bin/console doctrine:database:create --if-not-exists
 	$(EXEC) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
-db.reset: ## Drop and recreate the database
+db.reset: ## Drop and recreate the database (the worker is stopped meanwhile: it holds a connection)
+	$(DC) stop worker
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists
 	$(MAKE) db.migrate
+	$(DC) start worker
 
 fixtures: ## Load the demo dataset (purges the database and the stored files first)
 	$(EXEC) bin/console doctrine:fixtures:load --no-interaction --purge-with-truncate --group=demo

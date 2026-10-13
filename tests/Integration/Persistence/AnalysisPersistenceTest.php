@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Persistence;
 
+use App\Analysis\AnalysisResult;
 use App\Entity\AnalysisAttempt;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Entity\User;
 use App\Enum\DocumentStatus;
+use App\Enum\DocumentType;
 use App\Enum\FailureReason;
 use App\Tests\Integration\DatabaseConstraintAssertions;
 use App\Tests\Integration\SqlState;
@@ -34,8 +36,9 @@ final class AnalysisPersistenceTest extends KernelTestCase
     {
         $document = $this->failedDocument();
         $document->retryAnalysis($this->admin);
-        $document->startAnalysis();
-        $document->completeAnalysis(['summary' => 'Bulletin de mars 2026']);
+        $document->startAnalysis('test-reference');
+        $result = new AnalysisResult(DocumentType::Payslip, new \DateTimeImmutable('2026-03-01'), new \DateTimeImmutable('2026-03-31'), 'Bulletin de mars 2026', [['label' => 'Salariés', 'value' => '3']], 0.93);
+        $document->completeAnalysis($result);
         $this->em->flush();
         $this->em->clear();
 
@@ -44,7 +47,10 @@ final class AnalysisPersistenceTest extends KernelTestCase
         $this->assertNotNull($reloaded);
         $this->assertSame(DocumentStatus::Analyzed, $reloaded->getStatus());
         $this->assertSame(2, $reloaded->getCurrentAttempt()->getNumber());
-        $this->assertSame(['summary' => 'Bulletin de mars 2026'], $reloaded->getCurrentAttempt()->getResult());
+        // jsonb does not keep the key order.
+        $this->assertEquals($result->toArray(), $reloaded->getCurrentAttempt()->getResult());
+        $this->assertSame(DocumentType::Payslip, $reloaded->getType());
+        $this->assertSame('2026-03-31', $reloaded->getPeriodEnd()?->format('Y-m-d'));
         $firstAttempt = $reloaded->getAttempts()->first();
         $this->assertInstanceOf(AnalysisAttempt::class, $firstAttempt);
         $this->assertSame(FailureReason::UnreadableFile, $firstAttempt->getFailureReason());
@@ -128,7 +134,7 @@ final class AnalysisPersistenceTest extends KernelTestCase
     private function failedDocument(): Document
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis(FailureReason::UnreadableFile);
 
         return $document;
