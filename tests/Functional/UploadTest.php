@@ -6,6 +6,8 @@ namespace App\Tests\Functional;
 
 use App\Entity\Document;
 use App\Message\StartAnalysis;
+use League\Flysystem\FilesystemOperator;
+use League\Flysystem\UnableToWriteFile;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
@@ -228,6 +230,39 @@ final class UploadTest extends WebTestCase
         $this->assertResponseRedirects('/espace/depot');
         $this->browser->followRedirect();
         $this->assertSelectorTextContains('main', 'L\'envoi dépasse la taille maximale autorisée (100 Mo au total sans JavaScript).');
+    }
+
+    public function testBatchFallbackRefusesAnUnknownType(): void
+    {
+        $this->browser->loginUser($this->createClientUser());
+
+        $this->browser->request('POST', '/espace/depot', ['_token' => $this->tokenFromUploadPage(), 'type' => 'invoice'], ['files' => [$this->upload('sample.pdf', 'a.pdf')]]);
+
+        $this->assertResponseRedirects('/espace/depot');
+        $this->browser->followRedirect();
+        $this->assertSelectorTextContains('main', 'Nature de pièce inconnue.');
+        $this->assertSame(0, $this->em()->getRepository(Document::class)->count([]));
+    }
+
+    public function testBatchFallbackStopsCleanlyOnATechnicalError(): void
+    {
+        $storage = $this->createStub(FilesystemOperator::class);
+        $storage->method('writeStream')->willThrowException(UnableToWriteFile::atLocation('any', 'disk full'));
+        $this->browser->disableReboot();
+        static::getContainer()->set('documents.storage', $storage);
+
+        $this->browser->loginUser($this->createClientUser());
+        $token = $this->tokenFromUploadPage();
+
+        $this->browser->request('POST', '/espace/depot', ['_token' => $token], ['files' => [
+            $this->upload('sample.pdf', 'premier.pdf'),
+            $this->upload('sample.png', 'second.png'),
+        ]]);
+
+        $this->assertResponseRedirects('/espace/depot');
+        $this->browser->followRedirect();
+        $this->assertSelectorTextContains('main', 'Une erreur technique a interrompu l\'envoi : premier.pdf et les fichiers suivants n\'ont pas été enregistrés.');
+        $this->assertSame(0, $this->em()->getRepository(Document::class)->count([]));
     }
 
     public function testBatchFallbackRejectsAnInvalidCsrfToken(): void

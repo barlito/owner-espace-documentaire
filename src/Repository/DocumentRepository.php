@@ -53,12 +53,19 @@ class DocumentRepository extends ServiceEntityRepository
      * Locks the document row until the end of the transaction (the messenger middleware provides it) and returns it
      * only if it is still in the state the caller expects. Serialises the handlers and the reconciliation
      * on a document, whatever order their messages arrive in.
-     *
-     * Always call it on a document that is not loaded yet: an already managed entity would be locked but not refreshed.
      */
     public function findForUpdate(Uuid $documentId, Uuid $attemptId, DocumentStatus $status): ?Document
     {
-        $document = $this->getEntityManager()->find(Document::class, $documentId, LockMode::PESSIMISTIC_WRITE);
+        $entityManager = $this->getEntityManager();
+
+        // find() would lock an entity already in memory without reading it again: refresh it under the lock instead,
+        // so that the state checked below is the one in the database.
+        $document = $entityManager->getUnitOfWork()->tryGetById($documentId, Document::class);
+        if ($document instanceof Document) {
+            $entityManager->refresh($document, LockMode::PESSIMISTIC_WRITE);
+        } else {
+            $document = $entityManager->find(Document::class, $documentId, LockMode::PESSIMISTIC_WRITE);
+        }
 
         return $document?->getStatus() === $status && $document->getCurrentAttempt()->getId()->equals($attemptId) ? $document : null;
     }

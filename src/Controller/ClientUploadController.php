@@ -10,6 +10,7 @@ use App\Enum\DocumentType;
 use App\Upload\DocumentUploader;
 use App\Upload\UploadPolicy;
 use App\Upload\UploadRejected;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,6 +29,7 @@ final class ClientUploadController extends AbstractController
     public function __construct(
         private readonly DocumentUploader $uploader,
         private readonly UploadPolicy $policy,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -53,14 +55,8 @@ final class ClientUploadController extends AbstractController
             return new JsonResponse(['error' => 'Aucun fichier reçu.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $rawType = $request->request->getString('type');
-        $type = '' === $rawType ? null : DocumentType::tryFrom($rawType);
-        if ('' !== $rawType && null === $type) {
-            return new JsonResponse(['error' => 'Nature de pièce inconnue.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
         try {
-            $document = $this->uploader->upload($file, $user, $type);
+            $document = $this->uploader->upload($file, $user, $this->type($request));
         } catch (UploadRejected $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -92,8 +88,13 @@ final class ClientUploadController extends AbstractController
 
         $this->denyUnlessValidCsrfToken($request);
 
-        $rawType = $request->request->getString('type');
-        $type = '' === $rawType ? null : DocumentType::tryFrom($rawType);
+        try {
+            $type = $this->type($request);
+        } catch (UploadRejected $e) {
+            $this->addFlash('warning', $e->getMessage());
+
+            return $this->redirectToRoute('client_upload');
+        }
 
         $files = array_values(array_filter(
             $request->files->all('files'),
@@ -120,6 +121,15 @@ final class ClientUploadController extends AbstractController
                 ++$received;
             } catch (UploadRejected $e) {
                 $this->addFlash('warning', \sprintf('%s : %s', $name, $e->getMessage()));
+            } catch (\Throwable $e) {
+                // Storage or database failure: the next files would most likely fail the same way
+                // (a failed transaction closes the entity manager), so the batch stops here.
+                $this->logger->error('Batch upload interrupted by a technical error.', ['exception' => $e]);
+                $this->addFlash('danger', \sprintf(
+                    'Une erreur technique a interrompu l\'envoi : %s et les fichiers suivants n\'ont pas été enregistrés. Réessayez dans quelques instants.',
+                    $name,
+                ));
+                break;
             }
         }
 
@@ -130,6 +140,21 @@ final class ClientUploadController extends AbstractController
         }
 
         return $this->redirectToRoute($received > 0 ? 'client_dashboard' : 'client_upload');
+    }
+
+    /**
+     * The optional nature chosen by the client; an unknown value is refused rather than silently dropped.
+     *
+     * @throws UploadRejected
+     */
+    private function type(Request $request): ?DocumentType
+    {
+        $value = $request->request->getString('type');
+        if ('' === $value) {
+            return null;
+        }
+
+        return DocumentType::tryFrom($value) ?? throw new UploadRejected('Nature de pièce inconnue.');
     }
 
     private function denyUnlessValidCsrfToken(Request $request): void
