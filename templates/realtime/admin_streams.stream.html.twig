@@ -51,6 +51,6 @@
     </turbo-stream>
     {# The retry button needs a CSRF token: the frame loads it from the page's own route, in the viewer's session. #}
     <turbo-stream action="replace" target="admin-document-actions-{{ document.id }}">
-        <template><turbo-frame id="admin-document-actions-{{ document.id }}" src="{{ path('admin_document_actions', {id: document.id}) }}"></turbo-frame></template>
+        <template><turbo-frame id="admin-document-actions-{{ document.id }}" class="block empty:hidden" src="{{ path('admin_document_actions', {id: document.id}) }}"></turbo-frame></template>
     </turbo-stream>
 {% endif %}

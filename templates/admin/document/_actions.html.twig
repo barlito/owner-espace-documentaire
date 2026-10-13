@@ -1,7 +1,7 @@
 {# Retry of a failed analysis. A Turbo Frame of its own, served by admin_document_actions as well: the CSRF token can only
    be issued while handling a request, never by the worker that pushes the live updates. The form leaves the frame
    (_top): the redirect after the POST is a full page visit. #}
-<turbo-frame id="admin-document-actions-{{ document.id }}">
+<turbo-frame id="admin-document-actions-{{ document.id }}" class="block empty:hidden">
     {%- if 'failed' == document.status.value -%}
         {% set reason = document.currentAttempt.failureReason %}
         <twig:Card>
