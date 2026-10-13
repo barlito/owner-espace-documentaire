@@ -127,13 +127,21 @@ final class AnalysisSimulatorTest extends TestCase
         $this->assertMatchesRegularExpression('/^[\d\x{202F}]+,\d{2}\x{A0}€$/u', $json['fields'][1]['value']);
     }
 
-    public function testResultFallsBackToOtherAndToTheMonthBeforeTheUpload(): void
+    public function testAnOtherDocumentWithoutADateInItsNameGetsNoPeriod(): void
     {
         $json = $this->simulator->result($this->document('IMG_0001.jpg'))->toArray();
 
         $this->assertSame('other', $json['detected_type']);
-        $this->assertSame(['start' => '2026-03-01', 'end' => '2026-03-31'], $json['period']);
+        $this->assertNull($json['period']);
         $this->assertSame(['Émetteur', 'Date', 'Montant TTC'], array_column($json['fields'], 'label'));
+    }
+
+    public function testAPeriodicDocumentWithoutADateInItsNameCoversTheMonthBeforeTheUpload(): void
+    {
+        $json = $this->simulator->result($this->document('DSN.pdf'))->toArray();
+
+        $this->assertSame('dsn', $json['detected_type']);
+        $this->assertSame(['start' => '2026-03-01', 'end' => '2026-03-31'], $json['period']);
     }
 
     public function testQuarterAndYearPeriods(): void

@@ -103,7 +103,9 @@ final readonly class AnalysisSimulator
 
     /**
      * Payslips, DSN and the like cover a month, accounts and tax notices a year, the rest has no period.
-     * Without a date in the file name, the period is the one that has just ended before the upload.
+     * Without a date in the file name, the period is the one that has just ended before the upload; except for
+     * "other" documents, which may be anything (an invoice, an insurance certificate…): a missing period is better
+     * than an invented one, which would show the document under the wrong month.
      *
      * @return array{\DateTimeImmutable, \DateTimeImmutable}|null
      */
@@ -116,6 +118,9 @@ final readonly class AnalysisSimulator
         };
         if (null === $yearly) {
             return null;
+        }
+        if (DocumentType::Other === $type) {
+            return $filename->period(false);
         }
 
         $uploadedAt = $document->getUploadedAt();

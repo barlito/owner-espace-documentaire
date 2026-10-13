@@ -181,7 +181,7 @@ Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProviderInt
 | Succès long | 10 % | 60 à 120 s |
 | Échec (fichier illisible, format non pris en charge, inconnu) | 15 % | 3 à 12 s |
 
-- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques.
+- **Mots-clés dans le nom du fichier** (pour la démonstration, insensibles à la casse et aux accents) : `illisible` → échec « fichier illisible » ; `echec` → échec inconnu ; `lent` ou `long` → succès après 60 à 120 s. Le nom sert aussi à deviner le type (`bulletin`, `kbis`, `statuts`, `bilan`, `dsn`, `mutuelle`…) et la période (`2026-03`, `mars-2026`, `T1-2026`, ou une année pour un bilan) ; à défaut, le mois précédant le dépôt pour les documents périodiques (bulletin, DSN, situation comptable) et aucune période pour un document « Autre » : une période absente vaut mieux qu'une période inventée.
 - **Relance** : une tentative n°2 ou plus réussit toujours, **sauf** si la précédente a échoué sur un fichier illisible (une relance ne répare pas un fichier).
 - L'échec « interrompu » n'est jamais tiré au sort : il est réservé à la réconciliation.
 
