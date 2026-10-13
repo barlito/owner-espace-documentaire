@@ -2,7 +2,7 @@
 
 Espace où un client dépose ses pièces comptables, juridiques et sociales, les retrouve et suit leur analyse (simulée), avec un espace administrateur de supervision et de relance.
 
-> Projet réalisé dans le cadre d'un test technique. Le README est enrichi au fil des phases ; la section « Livraison » (hypothèses, limites, usage de l'IA) sera complétée en fin de projet.
+> Projet réalisé dans le cadre d'un test technique (5 jours). Pour une lecture rapide : [Lancer le projet](#lancer-le-projet), [Parcours de démonstration](#parcours-de-démonstration) et la [Note de livraison](#note-de-livraison) (hypothèses, choix, usage de l'IA, limites, vérifications, temps passé, suite).
 
 ## Prérequis
 
@@ -72,6 +72,107 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make db.reset` | Supprime et recrée la base |
 | `make fixtures` | Recharge le jeu de démonstration (vide la base et le stockage des documents) |
 | `make fixtures.volume` | Recharge la démonstration et ajoute ~5 000 documents pour tester la charge |
+
+## Parcours de démonstration
+
+Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pour voir les mises à jour en direct, gardez deux onglets ouverts.
+
+1. **Côté client — Paul** (`paul@boulangerie-martin.test`) : « Mon dossier » liste ~60 pièces sur 14 mois. Recherchez `releve` (sans accent), filtrez par statut, nature ou période, ouvrez une pièce : résultat de l'analyse, aperçu, téléchargement, historique.
+2. **Déposer** (`Déposer des pièces`) plusieurs fichiers à la fois. Le nom du fichier pilote la simulation, pour pouvoir reproduire chaque cas :
+   - `…-lent.pdf` : analyse longue (60 à 120 s) ;
+   - `…-illisible.pdf` : échec « fichier illisible » ;
+   - `…-echec.pdf` : échec de cause inconnue ;
+   - tout autre nom : tirage (75 % de succès rapides, 10 % de succès longs, 15 % d'échecs).
+
+   Un `.txt` est refusé avec sa raison. Les statuts évoluent sans recharger, sur la page de dépôt comme dans le dossier.
+3. **Côté administrateur — Sophie** (`admin@owner.test`) : la Supervision liste les échecs de tous les clients. Ouvrez celui déposé à l'étape 2, consultez les tentatives et l'historique technique, cliquez **Relancer** (un double clic ne crée qu'une tentative) et suivez la nouvelle issue en direct.
+4. **Retour côté client** : la pièce relancée affiche sa nouvelle issue ; son historique garde l'échec, sa cause et la relance « par l'équipe OWNER ».
+5. **Isolation** : connecté en Claire (`claire@lespetitspas.test`), l'URL d'une pièce de Paul répond 404.
+6. **Volume** : `make fixtures.volume` ajoute ~5 200 pièces, dont un client de 3 000 (`contact@groupe-delmas-restauration.test`, même mot de passe).
+
+## Note de livraison
+
+### Hypothèses
+
+- **Un compte = un client** pour ce MVP, mais les pièces appartiennent à l'entreprise (`Client`), pas au compte : plusieurs personnes pourront partager un dossier sans migration.
+- **La nature est facultative au dépôt**, la période ne se saisit pas : l'analyse (simulée) les complète. Ce que le client a choisi prime sur ce que l'analyse détecte. Une pièce « Autre » ne reçoit une période que si son nom contient une date : une période absente vaut mieux qu'une période inventée.
+- **Formats retenus** : PDF, JPEG, PNG, HEIC (photos de téléphone), Word et Excel ; 20 Mo par fichier, 20 fichiers par envoi. Le type est détecté côté serveur, à partir du contenu.
+- **L'analyse démarre automatiquement** après le dépôt ; elle est simulée mais suit le fonctionnement d'un vrai fournisseur asynchrone (soumission, référence, interrogation du résultat).
+- **Le client voit « l'équipe OWNER » comme auteur d'une relance**, sans le nom de la personne ni la raison technique ; l'administrateur voit les deux. C'est un choix de ton et de confidentialité ; afficher le prénom côté client serait une ligne dans `ClientTimelinePresenter`.
+- Les comptes de démonstration sont préparés (pas d'inscription ni de mot de passe oublié, conformément au sujet).
+
+### Choix de conception
+
+Ils sont détaillés dans les sections ci-dessus ; les principaux :
+
+- **`Document`, racine d'agrégat** : toute transition (démarrage, réussite, échec, relance) met à jour en une fois le statut, la tentative courante et l'historique. Des contraintes PostgreSQL (CHECK, index uniques partiels) garantissent les invariants même hors de l'application : un échec n'a jamais de résultat, une pièce n'a jamais deux tentatives en cours.
+- **Analyse asynchrone avec Messenger sur PostgreSQL** : le message est écrit dans la même transaction que la pièce, ce qui évite les pièces sans analyse et les messages orphelins. Un délai de message simule le travail (aucun worker ne dort). Une réconciliation planifiée rattrape les cas que la messagerie seule ne couvre pas.
+- **Interface `AnalysisProviderInterface`** : un vrai fournisseur se branche en une classe et une ligne de configuration.
+- **Temps réel avec Mercure** (intégré à FrankenPHP) et Turbo Streams, sur des topics privés par client : un client ne peut pas écouter le dossier d'un autre.
+- **Volume** : listes paginées par 25, filtres et recherche dans l'URL, seules les colonnes utiles sont lues ; mesures `EXPLAIN ANALYZE` sur 5 200 documents (toutes les listes sous 3 ms), sans index superflu.
+- **Isolation en deux couches** : chaque requête client part du client connecté (404 pour la pièce d'un autre), puis un voter vérifie l'accès.
+- **Organisation standard Symfony**, sans architecture hexagonale (voir [Organisation du code](#organisation-du-code)) : un développeur Symfony s'y retrouve sans explication.
+
+### Usage de l'IA
+
+**Outils** : [Claude Code](https://claude.com/claude-code) dans le terminal. Une session principale (modèle Claude Opus) servait d'interlocuteur technique ; des sous-agents (modèle Claude Sonnet) ont écrit une partie du code, chacun dans un worktree Git isolé avec sa propre stack Docker. Les vérifications dans le navigateur passaient par Playwright (Chromium, en conteneur).
+
+**Méthode** :
+
+1. **Chaque phase commençait par une proposition de choix techniques**, avec alternatives et recommandation, que j'ai validée, corrigée ou refusée avant toute ligne de code. Exemples de décisions où j'ai contredit ou réorienté la proposition : suppression d'une entité `Submission` jugée inutile, règle de blocage de connexion par IP sur tous les comptes, abandon d'un renvoi de messages « par minuterie » au profit d'un écouteur sur les messages abandonnés, introduction de l'interface fournisseur au lieu d'appels directs au simulateur, réorganisation des namespaces (dossiers standard Symfony, interfaces dans `Interface/`, aucun nom de code en français).
+2. **Le code était produit sur des briefs écrits** (contexte, conception validée, conventions, tests attendus, vérifications manuelles exigées), puis **relu ligne à ligne** avant chaque PR. Une phase = une branche = une PR, mergée après relecture.
+3. **Des audits automatisés** complétaient la relecture : un audit de conception de tout le code, et des campagnes de tests de bout en bout dans le navigateur à partir de checklists.
+
+**Corrections apportées à ce que l'IA avait produit** (trouvées en relecture, en audit ou en test, toutes corrigées) :
+
+- un test de blocage de connexion qui ne testait rien (cache réinitialisé entre deux requêtes), et une affirmation fausse sur le comportement de `GET /deconnexion` ;
+- une CI cassée par deux conteneurs initialisant le même volume Docker en parallèle ;
+- un lien de liste resté dans un Turbo Frame (« Content missing » au clic) ;
+- une annonce vocale qui lisait les changements de toutes les pièces sur la page d'une seule ;
+- un formateur de période écrit deux fois par deux sous-agents, une référence oubliée lors d'un renommage, un tableau à 9 colonnes illisible sur desktop, un débordement mobile, un lien retour qui perdait les filtres ;
+- un simulateur appelé directement par les handlers et des réglages couplés au simulateur.
+
+**Vérifications** : je reste responsable du résultat. Rien n'est mergé sans lint, tests et CI verts ; les parcours ont été rejoués dans le navigateur à chaque phase (y compris en 375 px et au clavier), et les points de fiabilité vérifiés en base (une seule tentative après un double clic, file d'attente qui survit à l'arrêt du worker, etc.).
+
+### Vérifications effectuées
+
+- **Analyse statique et style** : PHPStan niveau 8 (avec les extensions Symfony, Doctrine et PHPUnit), PHP-CS-Fixer.
+- **449 tests PHPUnit** (unitaires, intégration sur une vraie base PostgreSQL, fonctionnels), avec validation du schéma Doctrine contre la base migrée.
+- **CI GitHub Actions** sur chaque PR : stack Docker complète montée de zéro, lint, tests, et compilation du conteneur en environnement de production.
+- **Tests de bout en bout dans Chromium** (Playwright) à chaque phase : dépôt, analyse en direct, consultation, isolation entre clients, relance, mobile 375 px, clavier.
+- **Fiabilité** : arrêt du worker pendant un dépôt et pendant une analyse longue, double clic sur Relancer, messages en double ou en retard, réconciliation des analyses bloquées.
+- **Volume** : `EXPLAIN (ANALYZE)` des listes client et administrateur sur ~5 200 documents.
+
+Non vérifié : Firefox et Safari (Chromium seulement), lecteurs d'écran réels (structure ARIA vérifiée, pas d'écoute), déploiement de production.
+
+### Limites retenues
+
+| Limite | Pourquoi / piste |
+| --- | --- |
+| Analyse simulée | Demandé par le sujet ; brancher un fournisseur réel = une classe (voir [Brancher un vrai fournisseur](#brancher-un-vrai-fournisseur)). |
+| Pas de suppression de pièce | Hors périmètre ; elle passerait d'abord par une suppression logique (corbeille) avant une suppression définitive. |
+| Pas de relance groupée | Chaque relance est un geste réfléchi ; voir [Évolution possible](#évolution-possible). |
+| Un même fichier envoyé deux fois crée deux pièces | Le sha256 est stocké mais pas comparé ; un avertissement de doublon serait la suite logique. |
+| Pas de limite de débit sur les dépôts | Seule la connexion est limitée ; un limiteur par client tiendrait en quelques lignes. |
+| File `failed` non surveillée | Les messages abandonnés y restent consultables (`messenger:failed:show`) ; une alerte serait nécessaire en production. |
+| Compteurs par statut et pagination non actualisés en direct | Les lignes, statuts et totaux de la liste le sont ; les compteurs se recalculent au rechargement. |
+| Plus de 6 onglets ouverts en local bloquent le chargement | Chaque onglet garde une connexion Mercure et HTTP/1.1 en autorise 6 par serveur ; HTTP/2 en production lève la limite. |
+| Plusieurs workers lanceraient chacun la réconciliation | Sans danger (verrous) mais redondant ; voir [Réconciliation](#réconciliation). |
+| Aperçu PDF sans bac à sable | Visionneuses PDF de Firefox / Safari non vérifiées en mode isolé ; risque faible (type détecté côté serveur, `nosniff`). |
+| Stack de développement | Pas d'image de production, stockage local, secrets de développement, pas de `trusted_proxies` : la mise en production demanderait ces adaptations. |
+
+### Temps consacré
+
+Environ **8 heures de travail en session** avec l'assistant, sur trois jours (9, 12 et 13 octobre 2026), mesurées à partir de l'historique des sessions et des commits ; s'y ajoutent les relectures de PR et les tests manuels faits entre les sessions. L'historique Git (une branche et une PR par phase, ~120 commits) retrace l'avancement.
+
+### Prochaines priorités
+
+1. **Brancher un fournisseur d'analyse réel** derrière `AnalysisProviderInterface`, avec webhook et idempotence.
+2. **Préparer la production** : image Docker de production, stockage objet (S3), secrets, `trusted_proxies`, HTTP/2, surveillance de la file `failed` et des workers.
+3. **Doublons et quotas** : avertir lors d'un dépôt déjà reçu (sha256), limiter le débit des dépôts par client.
+4. **Prévenir le client** (e-mail) quand une pièce échoue pour une raison qui demande son action (fichier illisible).
+5. **Vérifications d'accessibilité et multi-navigateurs** : lecteurs d'écran, Firefox, Safari.
+6. **Si le volume grossit fortement** : pagination par curseur, index trigramme pour la recherche, compteurs maintenus.
 
 ## Stack technique
 
@@ -307,7 +408,7 @@ Toutes les routes `/admin*` exigent `ROLE_ADMIN` (un client reçoit 403) ; un id
 | `/admin` Supervision | Quatre compteurs globaux (en attente, en cours, en échec, analysées, une requête groupée) et la liste **À traiter** : documents dont la tentative courante a échoué, tous clients confondus, **échec le plus ancien d'abord**. Colonnes : fichier, client, raison technique, n° de tentative, « échoué depuis » (relatif et date). Filtres en GET (URL partageable, Turbo Frame, pastilles) : client, raison, nom de fichier (insensible à la casse et aux accents). 25 par page. |
 | `/admin/clients` | Clients recherchables par nom, ceux qui ont le plus d'échecs en premier puis par nom, avec leurs documents par statut. Deux requêtes quelle que soit la page : la page de clients, puis un `GROUP BY` pour les clients affichés (pas de N+1). |
 | `/admin/clients/{id}` | Le dossier d'un client avec exactement la recherche, les filtres et la pagination de « Mon dossier » (mêmes `DocumentFilters` et requêtes, partiels partagés et paramétrés). Seuls les documents de ce client sont lus. |
-| `/admin/pieces/{id}` | Page d'une pièce : mêmes blocs que côté client, plus le client, le **tableau des tentatives** (déclenchée par « Dépôt » ou le nom de l'administrateur, dates, durée, référence fournisseur, statut, raison technique), l'**historique administrateur** et l'action **Relancer**. Fichier et aperçu par `/admin/pieces/{id}/fichier` et `/apercu` (même `DocumentFileResponder`, droit `DOCUMENT_VIEW`). |
+| `/admin/pieces/{id}` | Page d'une pièce : mêmes blocs que côté client, plus le client, les **tentatives**, une carte par tentative (déclenchée par « Dépôt » ou le nom de l'administrateur, dates, durée, référence fournisseur, statut, raison technique), l'**historique administrateur** et l'action **Relancer**. Fichier et aperçu par `/admin/pieces/{id}/fichier` et `/apercu` (même `DocumentFileResponder`, droit `DOCUMENT_VIEW`). |
 
 Le lien « Retour » de la page d'une pièce et la redirection après une relance reviennent à la liste d'où l'on vient (paramètre `retour`, accepté seulement s'il s'agit d'un chemin `/admin…` interne : pas de redirection ouverte).
 
@@ -352,7 +453,7 @@ Le client ouvre une pièce depuis « Mon dossier » (le nom du fichier est un li
 | `GET /espace/pieces/{id}/fichier` (`client_document_file`) | Téléchargement (`Content-Disposition: attachment`) |
 | `GET /espace/pieces/{id}/apercu` (`client_document_preview`) | Affichage dans la page (PDF, JPEG et PNG uniquement, 404 sinon) |
 
-**Cloisonnement.** Les trois routes cherchent la pièce par `findOneForClient($id, $clientDuCompteConnecté)` : le client ne vient jamais de la requête, et la pièce d'un autre client répond 404, comme une pièce inexistante (un identifiant mal formé aussi). Le voter `DOCUMENT_VIEW` est une seconde barrière. Un administrateur n'a pas accès à ces routes (403) : son propre écran viendra avec l'espace admin.
+**Cloisonnement.** Les trois routes cherchent la pièce par `findOneForClient($id, $clientDuCompteConnecté)` : le client ne vient jamais de la requête, et la pièce d'un autre client répond 404, comme une pièce inexistante (un identifiant mal formé aussi). Le voter `DOCUMENT_VIEW` est une seconde barrière. Un administrateur n'a pas accès à ces routes (403) : il consulte les pièces par ses propres routes, `/admin/pieces/{id}`.
 
 **Fichiers.** Ils sont lus depuis Flysystem en flux (`readStream`), jamais chargés en mémoire. La réponse porte le type MIME **détecté à l'envoi** (jamais déduit de l'extension), `Content-Length`, `X-Content-Type-Options: nosniff` et `Cache-Control: private` (aucun cache partagé ne garde un document client). Le nom d'origine passe par `HeaderUtils::makeDisposition` avec un repli ASCII pour les navigateurs qui ignorent `filename*`. Un fichier absent du stockage est journalisé (erreur) et répond 404 : jamais de 500.
 
