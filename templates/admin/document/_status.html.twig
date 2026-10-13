@@ -28,9 +28,9 @@
             {% if 'pending' == status.value %}
                 <p>
                     {% if attempt.queuedAt %}
-                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, en attente d'un worker. Cette page se met à jour toute seule.
+                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, en file d'attente, l'analyse va démarrer. Cette page se met à jour toute seule.
                     {% else %}
-                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, pas encore mise en file : la réconciliation s'en charge.
+                        Demandée le {{ attempt.requestedAt|date('d/m/Y \\à H:i:s') }}, pas encore mise en file : elle le sera automatiquement dans la minute.
                     {% endif %}
                 </p>
             {% elseif 'processing' == status.value %}
@@ -61,7 +61,7 @@
                 {% set reason = attempt.failureReason %}
                 <twig:Alert variant="danger" title="L'analyse n'a pas abouti">
                     <p>
-                        {{ reason ? reason.label : 'Cause inconnue' }}{% if reason %} <code class="rounded bg-danger-100 px-1 py-0.5 text-xs">{{ reason.value }}</code>{% endif %}
+                        {{ reason ? reason.label : 'La cause de l\'échec n\'est pas connue' }}.
                     </p>
                     <p>Tentative n° {{ attempt.number }}, échouée le {{ attempt.finishedAt|date('d/m/Y \\à H:i:s') }}.</p>
                 </twig:Alert>

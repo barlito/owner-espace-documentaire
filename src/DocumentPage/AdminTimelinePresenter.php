@@ -37,7 +37,7 @@ final readonly class AdminTimelinePresenter
             ),
             DocumentEventType::AnalysisStarted => new TimelineEntry($at, 'lucide:loader-circle', 'Analyse démarrée', ucfirst($attempt), 'info'),
             DocumentEventType::AnalysisSucceeded => new TimelineEntry($at, 'lucide:circle-check', 'Analyse terminée', ucfirst($attempt), 'success'),
-            DocumentEventType::AnalysisFailed => new TimelineEntry($at, 'lucide:circle-x', 'Échec de l\'analyse', \sprintf('%s · %s', $this->technicalReason($event), ucfirst($attempt)), 'danger'),
+            DocumentEventType::AnalysisFailed => new TimelineEntry($at, 'lucide:circle-x', 'Échec de l\'analyse', \sprintf('%s · %s', $this->failureReason($event)->label(), ucfirst($attempt)), 'danger'),
             DocumentEventType::AnalysisRetried => new TimelineEntry(
                 $at,
                 'lucide:rotate-ccw',
@@ -46,11 +46,10 @@ final readonly class AdminTimelinePresenter
         };
     }
 
-    private function technicalReason(DocumentEvent $event): string
+    private function failureReason(DocumentEvent $event): FailureReason
     {
         $value = $event->getPayload()['reason'] ?? null;
-        $reason = \is_string($value) ? FailureReason::tryFrom($value) ?? FailureReason::Unknown : FailureReason::Unknown;
 
-        return \sprintf('%s (%s)', $reason->label(), $reason->value);
+        return \is_string($value) ? FailureReason::tryFrom($value) ?? FailureReason::Unknown : FailureReason::Unknown;
     }
 }
