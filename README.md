@@ -149,11 +149,28 @@ Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement
 
 ### Déroulé
 
-1. **Dépôt** : le document et le message `StartAnalysis` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
-2. **Démarrage** : le worker verrouille le document (`SELECT … FOR UPDATE`), le passe en « en cours » et décide du scénario. Il n'y a **aucun `sleep()`** : le temps de traitement simulé est le *délai* du message suivant, `FinishAnalysis`, ce qui laisse le worker libre pour les autres documents.
-3. **Fin** : `FinishAnalysis` enregistre le résultat (JSON : type détecté, période, résumé, champs, confiance) ou l'échec. Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse.
+L'analyse passe par l'interface `App\Analysis\AnalysisProvider`, calquée sur un fournisseur tiers asynchrone (OCR, IA) : on lui **soumet** le document, il répond par une **référence**, puis on **vient chercher le résultat** avec cette référence. La seule implémentation aujourd'hui est `SimulatedAnalysisProvider`.
 
-Les doublons et messages tardifs sont sans effet : chaque message porte l'identifiant de la tentative, et le handler ignore le message si le document n'est plus dans l'état attendu.
+1. **Dépôt** : le document et le message `StartAnalysis` sont écrits dans **la même transaction** (`AnalysisQueue` est le seul point d'envoi).
+2. **Démarrage** (`StartAnalysisHandler`) : le worker verrouille le document (`SELECT … FOR UPDATE`), le soumet au fournisseur (`submit()`), enregistre la référence sur la tentative (`provider_reference`), passe le document « en cours » et programme le message `CheckAnalysisOutcome` après le délai indiqué par le fournisseur. Il n'y a **aucun `sleep()`** : le worker reste libre pour les autres documents.
+3. **Résultat** (`CheckAnalysisOutcomeHandler`) : le worker demande où en est l'analyse (`fetchOutcome()`) :
+   - **toujours en cours** → le même message est renvoyé avec le délai indiqué (interrogation périodique, toutes les 20 s pour une analyse longue simulée) ;
+   - **réussie** → le résultat est enregistré (JSON : type détecté, période, résumé, champs, confiance). Le type n'est renseigné par l'analyse que si le client ne l'a pas choisi ; la période vient toujours de l'analyse ;
+   - **échouée** → l'échec et sa raison sont enregistrés.
+
+Les doublons et messages tardifs sont sans effet : chaque message porte l'identifiant de la tentative, et le handler ignore le message si le document n'est plus dans l'état attendu. Un fournisseur qui ne répond jamais est borné par la réconciliation (`ANALYSIS_STALE_AFTER`).
+
+Le simulateur ne garde aucun état : le scénario tiré à la soumission est écrit dans la référence (`sim:<tentative>:<issue>:<prêt à>`), comme un vrai fournisseur le conserverait de son côté.
+
+### Brancher un vrai fournisseur
+
+Il manque une seule classe : `XxxAnalysisProvider implements AnalysisProvider`, avec le client HTTP de Symfony et la conversion de la réponse du fournisseur en `AnalysisResult` / `FailureReason`, puis l'alias de `App\Analysis\AnalysisProvider` dans `config/services.yaml`. Points d'attention, déjà prévus par le contrat :
+
+- **Idempotence** : si la soumission réussit mais que la transaction échoue ensuite, Messenger rejoue le message ; l'identifiant de la tentative sert de clé d'idempotence auprès du fournisseur pour éviter une double soumission.
+- **Appel HTTP sous verrou** : `submit()` et `fetchOutcome()` s'exécutent dans la transaction du worker, ligne verrouillée : timeout court. Pour un fournisseur lent, isoler la soumission dans son propre message.
+- **Erreurs** : une erreur technique (fournisseur indisponible) est une exception → Messenger rejoue le message, puis la tentative passe en échec (voir la réconciliation). Un document que le fournisseur refuse est un `AnalysisOutcome::failed()`.
+- **Webhook plutôt que polling** : si le fournisseur notifie la fin d'analyse, un contrôleur retrouve la tentative par `provider_reference` et envoie `CheckAnalysisOutcome` ; l'interrogation périodique reste le filet de sécurité. Ajouter alors un index sur `provider_reference`.
+- **Délai maximal** : `ANALYSIS_STALE_AFTER` doit dépasser le temps de traitement garanti par le fournisseur.
 
 ### Scénarios
 
@@ -180,7 +197,7 @@ Au plus `ANALYSIS_RECONCILE_BATCH` documents par type et par passage, les plus a
 | Variable | Défaut | Rôle |
 | --- | --- | --- |
 | `ANALYSIS_RECONCILE_INTERVAL` | `1 minute` | Fréquence de la réconciliation |
-| `ANALYSIS_STALE_AFTER` | `600` | Secondes avant d'interrompre une analyse en cours. Doit dépasser la plus longue analyse simulée (120 s) : sinon le worker refuse de démarrer |
+| `ANALYSIS_STALE_AFTER` | `600` | Secondes avant d'interrompre une analyse en cours. Doit dépasser la plus longue analyse du fournisseur (120 s pour le simulateur, déclarée dans `config/services.yaml`) : sinon le worker refuse de démarrer |
 | `ANALYSIS_RECONCILE_BATCH` | `100` | Documents traités par type et par passage |
 
 **Évolution possible : la base indisponible au moment de l'abandon.** Si la base tombe pendant que Messenger abandonne un message, le listener ne peut pas écrire l'échec non plus : le document reste « en attente » (ou « en cours », et la réconciliation finira par l'interrompre). Une commande pourrait chercher les documents en attente depuis plusieurs heures pour alerter l'équipe ou les remettre en file automatiquement. Elle n'est pas faite : le cas suppose une panne de la base, et le message reste de toute façon dans la file `failed`.

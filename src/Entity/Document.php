@@ -150,11 +150,14 @@ class Document
         $this->getCurrentAttempt()->markQueued();
     }
 
-    public function startAnalysis(): AnalysisAttempt
+    /**
+     * @param string $providerReference identifies the analysis on the provider side
+     */
+    public function startAnalysis(string $providerReference): AnalysisAttempt
     {
         $this->assertStatus('startAnalysis', DocumentStatus::Pending);
 
-        $this->getCurrentAttempt()->start();
+        $this->getCurrentAttempt()->start($providerReference);
         $this->status = DocumentStatus::Processing;
         $this->record(DocumentEventType::AnalysisStarted, $this->getCurrentAttempt());
 

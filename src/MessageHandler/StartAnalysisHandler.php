@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\MessageHandler;
 
-use App\Analysis\Simulation\AnalysisSimulator;
+use App\Analysis\AnalysisProvider;
 use App\Enum\DocumentStatus;
-use App\Message\FinishAnalysis;
+use App\Message\CheckAnalysisOutcome;
 use App\Message\StartAnalysis;
 use App\Repository\DocumentRepository;
 use Psr\Log\LoggerInterface;
@@ -15,15 +15,14 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
 
 /**
- * Starts the attempt and schedules its end. The simulated work is the delay of the next message,
- * not a sleep: the worker stays free for other documents.
+ * Submits the document to the provider, marks the attempt as running and schedules the first outcome check.
  */
 #[AsMessageHandler]
 final readonly class StartAnalysisHandler
 {
     public function __construct(
         private DocumentRepository $documents,
-        private AnalysisSimulator $simulator,
+        private AnalysisProvider $provider,
         private MessageBusInterface $bus,
         private LoggerInterface $logger,
     ) {
@@ -42,12 +41,13 @@ final readonly class StartAnalysisHandler
             return;
         }
 
-        $document->startAnalysis();
-        $scenario = $this->simulator->scenario($document);
+        // Submitted first: if the provider fails, nothing has changed and Messenger retries the message.
+        $submission = $this->provider->submit($document);
+        $document->startAnalysis($submission->reference);
 
         $this->bus->dispatch(
-            new FinishAnalysis($message->documentId, $message->attemptId, $scenario->failure),
-            [new DelayStamp($scenario->delayMs)],
+            new CheckAnalysisOutcome($message->documentId, $message->attemptId),
+            [new DelayStamp($submission->checkAfterMs)],
         );
     }
 }

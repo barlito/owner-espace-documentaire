@@ -29,7 +29,7 @@ framework:
 
         routing:
             'App\Message\StartAnalysis': async
-            'App\Message\FinishAnalysis': async
+            'App\Message\CheckAnalysisOutcome': async
 
 when@test:
     framework:

@@ -24,11 +24,16 @@ services:
 
     Random\Randomizer: ~
 
+    # Analysis provider: the place to change to plug a real one (see README, "Brancher un vrai fournisseur"),
+    # together with its longest processing time below.
+    App\Analysis\AnalysisProvider: '@App\Analysis\Simulation\SimulatedAnalysisProvider'
+
     App\Analysis\ReconciliationSettings:
         arguments:
             $interval: '%env(ANALYSIS_RECONCILE_INTERVAL)%'
             $staleAfter: '%env(int:ANALYSIS_STALE_AFTER)%'
             $batch: '%env(int:ANALYSIS_RECONCILE_BATCH)%'
+            $longestAnalysisMs: !php/const App\Analysis\Simulation\AnalysisSimulator::LONG_DELAY_MAX_MS
 
     # Login throttling keyed on the IP alone (any account), see config/packages/rate_limiter.yaml.
     app.login_rate_limiter:

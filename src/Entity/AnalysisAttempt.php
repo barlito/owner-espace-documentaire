@@ -60,6 +60,13 @@ class AnalysisAttempt
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $queuedAt = null;
 
+    /**
+     * Identifies the analysis on the provider side (see AnalysisProvider): set when the attempt starts, used to
+     * fetch its outcome, and the key to find the attempt back from a provider webhook or for support.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $providerReference = null;
+
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
 
@@ -96,10 +103,11 @@ class AnalysisAttempt
     /**
      * @internal only Document may drive an attempt, so that status and timeline stay in sync
      */
-    public function start(): void
+    public function start(string $providerReference): void
     {
         $this->assertStatus(AttemptStatus::Pending);
         $this->status = AttemptStatus::Running;
+        $this->providerReference = $providerReference;
         $this->startedAt = now();
     }
 
@@ -163,6 +171,11 @@ class AnalysisAttempt
     public function getQueuedAt(): ?\DateTimeImmutable
     {
         return $this->queuedAt;
+    }
+
+    public function getProviderReference(): ?string
+    {
+        return $this->providerReference;
     }
 
     public function getStartedAt(): ?\DateTimeImmutable

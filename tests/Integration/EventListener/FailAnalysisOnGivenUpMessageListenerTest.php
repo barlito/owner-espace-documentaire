@@ -8,7 +8,7 @@ use App\Enum\DocumentEventType;
 use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
 use App\EventListener\FailAnalysisOnGivenUpMessageListener;
-use App\Message\FinishAnalysis;
+use App\Message\CheckAnalysisOutcome;
 use App\Message\StartAnalysis;
 use App\MessageHandler\StartAnalysisHandler;
 use App\Tests\Integration\AnalysisTestCase;
@@ -36,7 +36,7 @@ final class FailAnalysisOnGivenUpMessageListenerTest extends AnalysisTestCase
         $handler = self::getContainer()->get(StartAnalysisHandler::class);
         $this->asWorker(static fn () => $handler(new StartAnalysis($document->getId(), $document->getCurrentAttempt()->getId())));
 
-        $this->giveUp(new FinishAnalysis($document->getId(), $document->getCurrentAttempt()->getId(), null));
+        $this->giveUp(new CheckAnalysisOutcome($document->getId(), $document->getCurrentAttempt()->getId()));
 
         $failed = $this->reload($document);
         $this->assertSame(DocumentStatus::Failed, $failed->getStatus());
@@ -57,7 +57,7 @@ final class FailAnalysisOnGivenUpMessageListenerTest extends AnalysisTestCase
         $document = $this->createDocument();
 
         // The attempt is pending, a completion message expects it processing.
-        $this->giveUp(new FinishAnalysis($document->getId(), $document->getCurrentAttempt()->getId(), null));
+        $this->giveUp(new CheckAnalysisOutcome($document->getId(), $document->getCurrentAttempt()->getId()));
 
         $this->assertSame(DocumentStatus::Pending, $this->reload($document)->getStatus());
     }

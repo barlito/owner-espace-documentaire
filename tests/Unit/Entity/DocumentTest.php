@@ -50,7 +50,7 @@ final class DocumentTest extends TestCase
     {
         $document = $this->document();
 
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis(FailureReason::UnreadableFile);
         $this->assertSame(DocumentStatus::Failed, $document->getStatus());
 
@@ -59,7 +59,7 @@ final class DocumentTest extends TestCase
         $this->assertSame(2, $retry->getNumber());
         $this->assertSame($this->admin, $retry->getTriggeredBy());
 
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $result = $this->analysisResult();
         $document->completeAnalysis($result);
 
@@ -90,7 +90,7 @@ final class DocumentTest extends TestCase
     public function testFailureEventKeepsItsCause(): void
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis(FailureReason::Interrupted);
 
         $event = $document->getEvents()->last();
@@ -136,7 +136,7 @@ final class DocumentTest extends TestCase
     public function testTheAnalysisAlwaysSetsThePeriodAndFillsAMissingType(): void
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->completeAnalysis($this->analysisResult());
 
         $this->assertSame(DocumentType::Payslip, $document->getType());
@@ -147,7 +147,7 @@ final class DocumentTest extends TestCase
     public function testTheClientTypeWinsOverTheDetectedOneButThePeriodComesFromTheAnalysis(): void
     {
         $document = $this->document(DocumentType::Other, new \DateTimeImmutable('2020-01-01'), new \DateTimeImmutable('2020-01-31'));
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->completeAnalysis($this->analysisResult());
 
         $this->assertSame(DocumentType::Other, $document->getType());
@@ -158,7 +158,7 @@ final class DocumentTest extends TestCase
     public function testAnAnalysisWithoutPeriodClearsTheDeclaredOne(): void
     {
         $document = $this->document(null, new \DateTimeImmutable('2020-01-01'), new \DateTimeImmutable('2020-01-31'));
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->completeAnalysis(new AnalysisResult(DocumentType::Kbis, null, null, 'Extrait Kbis', [], 0.9));
 
         $this->assertNull($document->getPeriodStart());
@@ -168,7 +168,7 @@ final class DocumentTest extends TestCase
     public function testAResultWhosePeriodEndsBeforeItStartsIsRejectedAndChangesNothing(): void
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
 
         try {
             $document->completeAnalysis(new AnalysisResult(null, new \DateTimeImmutable('2026-03-31'), new \DateTimeImmutable('2026-03-01'), 'x', [], 0.9));
@@ -192,7 +192,7 @@ final class DocumentTest extends TestCase
     public function testQueuingIsOnlyPossibleWhilePending(): void
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
 
         $this->expectException(InvalidDocumentTransition::class);
         $document->markAnalysisQueued();
@@ -251,7 +251,7 @@ final class DocumentTest extends TestCase
     private function failedDocument(): Document
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis(FailureReason::Unknown);
 
         return $document;

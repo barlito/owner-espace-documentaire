@@ -100,7 +100,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new ReconciliationSettings('1 minute', 120, 100);
+        new ReconciliationSettings('1 minute', 120, 100, 120_000);
     }
 
     /**
@@ -111,7 +111,7 @@ final class ReconcileAnalysesHandlerTest extends AnalysisTestCase
         $handler = new ReconcileAnalysesHandler(
             self::getContainer()->get(DocumentRepository::class),
             self::getContainer()->get(AnalysisQueue::class),
-            new ReconciliationSettings('1 minute', 600, $batch),
+            new ReconciliationSettings('1 minute', 600, $batch, 120_000),
             $this->clock,
             new NullLogger(),
         );

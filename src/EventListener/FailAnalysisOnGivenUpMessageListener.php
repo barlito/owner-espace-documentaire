@@ -6,7 +6,7 @@ namespace App\EventListener;
 
 use App\Enum\DocumentStatus;
 use App\Enum\FailureReason;
-use App\Message\FinishAnalysis;
+use App\Message\CheckAnalysisOutcome;
 use App\Message\StartAnalysis;
 use App\Repository\DocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,7 +35,7 @@ final readonly class FailAnalysisOnGivenUpMessageListener
     public function __invoke(WorkerMessageFailedEvent $event): void
     {
         $message = $event->getEnvelope()->getMessage();
-        if ($event->willRetry() || (!$message instanceof StartAnalysis && !$message instanceof FinishAnalysis)) {
+        if ($event->willRetry() || (!$message instanceof StartAnalysis && !$message instanceof CheckAnalysisOutcome)) {
             return;
         }
 

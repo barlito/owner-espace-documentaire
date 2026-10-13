@@ -36,7 +36,7 @@ final class AnalysisPersistenceTest extends KernelTestCase
     {
         $document = $this->failedDocument();
         $document->retryAnalysis($this->admin);
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $result = new AnalysisResult(DocumentType::Payslip, new \DateTimeImmutable('2026-03-01'), new \DateTimeImmutable('2026-03-31'), 'Bulletin de mars 2026', [['label' => 'Salariés', 'value' => '3']], 0.93);
         $document->completeAnalysis($result);
         $this->em->flush();
@@ -134,7 +134,7 @@ final class AnalysisPersistenceTest extends KernelTestCase
     private function failedDocument(): Document
     {
         $document = $this->document();
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis(FailureReason::UnreadableFile);
 
         return $document;

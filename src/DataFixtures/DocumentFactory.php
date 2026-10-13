@@ -81,7 +81,7 @@ final class DocumentFactory
     public function start(Document $document): void
     {
         $this->advance($this->random->getInt(3, 20));
-        $document->startAnalysis();
+        $document->startAnalysis(\sprintf('fixture:%s', $document->getCurrentAttempt()->getId()->toRfc4122()));
     }
 
     public function finish(Document $document, ?FailureReason $failure = null): void

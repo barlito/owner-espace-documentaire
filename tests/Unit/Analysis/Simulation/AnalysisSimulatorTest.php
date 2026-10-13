@@ -187,7 +187,7 @@ final class AnalysisSimulatorTest extends TestCase
     private function retriedDocument(string $filename, FailureReason $firstFailure): Document
     {
         $document = $this->document($filename);
-        $document->startAnalysis();
+        $document->startAnalysis('test-reference');
         $document->failAnalysis($firstFailure);
         $document->retryAnalysis(User::admin('equipe@owner.test', 'Équipe OWNER'));
 
