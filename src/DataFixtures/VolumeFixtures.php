@@ -132,15 +132,12 @@ final class VolumeFixtures extends Fixture implements DependentFixtureInterface,
     }
 
     /**
-     * Mostly analyzed, a few failures; documents of the last hours are still in the queue.
+     * Mostly analyzed, a few failures; documents of the last hours stay pending, the worker analyzes them for real
+     * (a fixture left processing would never get an outcome and end up interrupted).
      */
     private function play(Document $document, bool $recent): void
     {
         if ($recent) {
-            if (0 === $this->random->getInt(0, 1)) {
-                $this->factory->start($document);
-            }
-
             return;
         }
 

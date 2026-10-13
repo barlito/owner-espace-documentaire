@@ -33,14 +33,16 @@ final class DemoFixturesTest extends KernelTestCase
         new ORMExecutor($this->em)->execute($fixtures, true);
     }
 
-    public function testBothDemoClientsHaveEveryStatus(): void
+    public function testBothDemoClientsHaveEveryStableStatus(): void
     {
         foreach ($this->clients() as $client) {
             $statuses = array_unique(array_map(static fn (Document $d): string => $d->getStatus()->value, $this->documentsOf($client)));
 
-            foreach (DocumentStatus::cases() as $status) {
+            foreach ([DocumentStatus::Pending, DocumentStatus::Analyzed, DocumentStatus::Failed] as $status) {
                 $this->assertContains($status->value, $statuses, \sprintf('%s has no %s document', $client->getName(), $status->value));
             }
+            // No provider would ever answer for it: the reconciliation would fail it as interrupted.
+            $this->assertNotContains(DocumentStatus::Processing->value, $statuses, $client->getName());
             $this->assertGreaterThanOrEqual(25, \count($this->documentsOf($client)), $client->getName());
         }
     }

@@ -28,8 +28,11 @@ use function Symfony\Component\Clock\now;
  * timeline are consistent with its upload date. The outcome of a few documents is scripted per client
  * (by position from the newest), the others are analyzed.
  *
- * Scripted outcomes: a FailureReason (failed), 'pending', 'processing',
+ * Scripted outcomes: a FailureReason (failed), 'pending',
  * 'retried' (failed, relaunched by the admin, then analyzed) or 'retried-pending' (relaunched, not picked up yet).
+ * No document is left processing: no provider would ever answer for it, so the reconciliation would fail it as
+ * interrupted after ANALYSIS_STALE_AFTER. Recent documents stay pending instead, and the reconciliation queues
+ * them as soon as the worker starts: they really go through the analysis, live.
  *
  * @phpstan-type Upload array{at: \DateTimeImmutable, filename: string, type: ?DocumentType, month: ?\DateTimeImmutable}
  */
@@ -119,7 +122,7 @@ final class DemoDocumentFixtures extends Fixture implements DependentFixtureInte
         return [
             [30 * 60, 'retried-pending', $photo(30 * 60), null],
             [90, 'pending', 'Facture-fournisseur-' . $now->format('Y-m') . '.pdf', DocumentType::Other],
-            [4, 'processing', 'Note-de-frais-' . DocumentFactory::monthName($now) . '-' . $now->format('Y') . '.pdf', DocumentType::Other],
+            [4, 'pending', 'Note-de-frais-' . DocumentFactory::monthName($now) . '-' . $now->format('Y') . '.pdf', DocumentType::Other],
             [1, 'pending', $photo(1), null],
         ];
     }

@@ -36,7 +36,7 @@ docker compose exec php bin/console doctrine:fixtures:load -n --purge-with-trunc
 
 - les trois comptes ci-dessous ;
 - environ 14 mois d'historique pour les deux clients : ~60 documents pour la Boulangerie Martin, ~36 pour la Micro-crèche, avec de vrais fichiers stockés (PDF générés, quelques images) ;
-- tous les statuts : analysés pour la plupart, quelques documents en attente ou en cours d'analyse (déposés dans l'heure), des échecs de causes variées, et des documents relancés par l'administratrice (échec puis succès à la tentative n° 2, ou relance encore en attente).
+- tous les statuts : analysés pour la plupart, quelques documents en attente (déposés dans l'heure) que le worker analyse pour de vrai dès son démarrage : ils passent « en cours » sous vos yeux dans la Supervision, des échecs de causes variées, et des documents relancés par l'administratrice (échec puis succès à la tentative n° 2, ou relance encore en attente).
 
 `make fixtures.volume` charge en plus un jeu de **test de charge** : 40 clients de 3 à 100 documents et un très gros client de 3 000 documents, soit environ 5 200 documents au total (une dizaine de secondes). Ces 40 comptes partagent le mot de passe `demo1234`.
 
