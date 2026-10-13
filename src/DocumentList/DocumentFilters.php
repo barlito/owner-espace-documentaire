@@ -24,8 +24,6 @@ final readonly class DocumentFilters
     /** Value of the "nature" parameter selecting the documents that have no nature yet. */
     public const string UNCATEGORIZED = 'aucune';
 
-    private const int MAX_SEARCH_LENGTH = 100;
-
     public function __construct(
         public ?string $search = null,
         public ?DocumentStatus $status = null,
@@ -48,7 +46,7 @@ final readonly class DocumentFilters
         $nature = self::string($params, self::PARAM_TYPE);
 
         return new self(
-            search: self::cleanSearch(self::string($params, self::PARAM_SEARCH)),
+            search: SearchTerm::clean(self::string($params, self::PARAM_SEARCH)),
             status: null === ($status = self::string($params, self::PARAM_STATUS)) ? null : DocumentStatus::tryFrom($status),
             type: null === $nature ? null : DocumentType::tryFrom($nature),
             uncategorized: self::UNCATEGORIZED === $nature,
@@ -95,7 +93,7 @@ final readonly class DocumentFilters
      */
     public static function escapeLike(string $term): string
     {
-        return addcslashes($term, '\\%_');
+        return SearchTerm::escapeLike($term);
     }
 
     /**
@@ -106,20 +104,5 @@ final readonly class DocumentFilters
         $value = $params[$name] ?? null;
 
         return \is_string($value) ? $value : null;
-    }
-
-    private static function cleanSearch(?string $raw): ?string
-    {
-        if (null === $raw) {
-            return null;
-        }
-
-        // Invalid UTF-8 would make the database reject the query; control characters have no place in a file name.
-        $term = trim((string) preg_replace('/[\p{Cc}\p{Cf}]+/u', ' ', $raw));
-        if ('' === $term) {
-            return null;
-        }
-
-        return mb_substr($term, 0, self::MAX_SEARCH_LENGTH);
     }
 }
