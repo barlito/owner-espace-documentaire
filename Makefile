@@ -8,7 +8,7 @@ EXEC = $(DC) exec -T php
 help: ## List available commands
 	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-install: build up ## Full install (build, start, dependencies, assets, database, demo accounts)
+install: build up ## Full install (build, start, dependencies, assets, database, demo dataset)
 	$(EXEC) composer install --no-interaction
 	$(MAKE) assets
 	$(MAKE) db.migrate
@@ -43,8 +43,8 @@ db.reset: ## Drop and recreate the database
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists
 	$(MAKE) db.migrate
 
-fixtures: ## Load the demo accounts (purges the database first)
-	$(EXEC) bin/console doctrine:fixtures:load --no-interaction
+fixtures: ## Load the demo dataset (purges the database and the stored files first)
+	$(EXEC) bin/console doctrine:fixtures:load --no-interaction --purge-with-truncate --group=demo
 
 assets: ## Build the CSS (Tailwind)
 	$(EXEC) bin/console tailwind:build
