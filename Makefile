@@ -67,6 +67,8 @@ watch: ## Rebuild the CSS on every change
 	$(DC) exec php bin/console tailwind:build --watch
 
 test: ## Recreate the test database, validate the schema and run PHPUnit
+	@# The non-debug kernel of ErrorPagesTest never checks its cache for freshness: start from a clean one.
+	$(EXEC) rm -rf var/cache/test
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists --env=test
 	$(EXEC) bin/console doctrine:database:create --env=test
 	$(EXEC) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test

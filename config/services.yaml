@@ -45,6 +45,12 @@ services:
 
 when@test:
     services:
+        # Functional tests provoke 403, 404 and CSRF errors on purpose: logged at "error" level on stderr, they read
+        # like failures in the PHPUnit output. Only critical entries (uncaught 500s) are still printed.
+        logger:
+            class: Symfony\Component\HttpKernel\Log\Logger
+            arguments: ['critical', ~, ~, '@request_stack', '%kernel.debug%']
+
         # Tests never reach the hub: published updates are recorded instead (tests/Support/PublishedUpdates.php).
         App\Tests\Support\PublishedUpdates:
             public: true
