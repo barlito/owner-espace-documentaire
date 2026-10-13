@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Dossier;
+namespace App\DocumentList;
 
 /**
  * One page of a paginated result: the items, plus what a pager needs to be drawn.

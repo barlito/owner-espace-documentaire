@@ -8,10 +8,10 @@
         role="search"
         aria-label="Rechercher dans mes pièces"
         class="space-y-4"
-        data-dossier-filters-target="form"
+        data-document-filters-target="form"
         data-turbo-frame="documents-results"
         data-turbo-action="advance"
-        data-action="submit->dossier-filters#prune"
+        data-action="submit->document-filters#prune"
     >
         <div class="flex flex-wrap items-end gap-3">
             <div class="min-w-0 flex-1 basis-64">
@@ -27,8 +27,8 @@
                         autocomplete="off"
                         placeholder="Rechercher un document"
                         class="{{ field }} pl-9"
-                        data-dossier-filters-target="search"
-                        data-action="input->dossier-filters#debounce"
+                        data-document-filters-target="search"
+                        data-action="input->document-filters#debounce"
                     >
                 </div>
             </div>
@@ -38,7 +38,7 @@
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div>
                 <label for="filter-statut" class="mb-1 block text-sm font-medium text-navy-500">Statut</label>
-                <select id="filter-statut" name="statut" class="{{ field }}" data-action="change->dossier-filters#submit">
+                <select id="filter-statut" name="statut" class="{{ field }}" data-action="change->document-filters#submit">
                     <option value="">Tous les statuts</option>
                     {% for entry in statusCounts %}
                         <option value="{{ entry.status.value }}"{{ filters.status is same as entry.status ? ' selected' }}>{{ entry.status.label }}</option>
@@ -47,7 +47,7 @@
             </div>
             <div>
                 <label for="filter-periode" class="mb-1 block text-sm font-medium text-navy-500">Période</label>
-                <select id="filter-periode" name="periode" class="{{ field }}" data-action="change->dossier-filters#submit">
+                <select id="filter-periode" name="periode" class="{{ field }}" data-action="change->document-filters#submit">
                     <option value="">Toutes les périodes</option>
                     <optgroup label="Année">
                         {% for period in periods.years %}
@@ -63,9 +63,9 @@
             </div>
             <div class="col-span-2 sm:col-span-1">
                 <label for="filter-nature" class="mb-1 block text-sm font-medium text-navy-500">Nature</label>
-                <select id="filter-nature" name="nature" class="{{ field }}" data-action="change->dossier-filters#submit">
+                <select id="filter-nature" name="nature" class="{{ field }}" data-action="change->document-filters#submit">
                     <option value="">Toutes les natures</option>
-                    <option value="{{ constant('App\\Dossier\\DocumentFilters::UNCATEGORIZED') }}"{{ filters.uncategorized ? ' selected' }}>Non catégorisée</option>
+                    <option value="{{ constant('App\\DocumentList\\DocumentFilters::UNCATEGORIZED') }}"{{ filters.uncategorized ? ' selected' }}>Non catégorisée</option>
                     {% for group in typeGroups %}
                         <optgroup label="{{ group.family.label }}">
                             {% for type in group.types %}

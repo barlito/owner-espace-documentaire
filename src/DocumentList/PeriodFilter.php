@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Dossier;
+namespace App\DocumentList;
 
 /**
  * A calendar month ("2026-03") or year ("2026") a document's period is compared with.

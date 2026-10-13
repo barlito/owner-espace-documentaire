@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Dossier\DocumentFilters;
-use App\Dossier\Page;
+use App\DocumentList\DocumentFilters;
+use App\DocumentList\Page;
 use App\Entity\Client;
 use App\Entity\Document;
 use App\Enum\DocumentStatus;

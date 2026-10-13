@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Dossier;
+namespace App\DocumentList;
 
 /**
  * Human-readable period of a document, in French: "Mars 2026", "2025", "01/01/2026 – 31/03/2026".

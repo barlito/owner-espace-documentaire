@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Dossier;
+namespace App\DocumentList;
 
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;

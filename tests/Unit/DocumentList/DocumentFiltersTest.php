@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Dossier;
+namespace App\Tests\Unit\DocumentList;
 
-use App\Dossier\DocumentFilters;
+use App\DocumentList\DocumentFilters;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
 use PHPUnit\Framework\TestCase;

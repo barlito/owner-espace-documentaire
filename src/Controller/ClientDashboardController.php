@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Dossier\DocumentFilters;
-use App\Dossier\Page;
-use App\Dossier\PeriodFilter;
+use App\DocumentList\DocumentFilters;
+use App\DocumentList\Page;
+use App\DocumentList\PeriodFilter;
 use App\Entity\User;
 use App\Enum\DocumentType;
 use App\Repository\DocumentRepository;

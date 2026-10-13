@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Dossier;
+namespace App\Tests\Unit\DocumentList;
 
-use App\Dossier\PeriodFilter;
-use App\Dossier\PeriodLabel;
+use App\DocumentList\PeriodFilter;
+use App\DocumentList\PeriodLabel;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

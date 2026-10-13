@@ -28,7 +28,7 @@
     {% if filters.uncategorized %}{% set chips = chips|merge([{param: 'nature', label: 'Non catégorisée', name: 'Nature'}]) %}{% endif %}
     {% if filters.period %}{% set chips = chips|merge([{param: 'periode', label: filters.period.label, name: 'Période'}]) %}{% endif %}
 
-    {# Read aloud once the frame is loaded (see the dossier-filters controller), through the page's single live region. #}
+    {# Read aloud once the frame is loaded (see the document-filters controller), through the page's single live region. #}
     <div data-announcement="{{ total == 0 ? 'Aucune pièce ne correspond.' : total ~ (total > 1 ? ' pièces' : ' pièce') ~ (filters.active ? (total > 1 ? ' correspondent' : ' correspond')) ~ ', page ' ~ page.number ~ ' sur ' ~ page.pageCount ~ '.' }}">
         <nav aria-label="Pièces par statut" class="mb-4">
             <ul class="flex flex-wrap gap-2">

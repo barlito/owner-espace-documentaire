@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Dossier;
+namespace App\Tests\Unit\DocumentList;
 
-use App\Dossier\Page;
+use App\DocumentList\Page;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

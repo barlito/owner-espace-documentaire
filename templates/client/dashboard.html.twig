@@ -13,7 +13,7 @@
 
     {# The form and the results are siblings: only the results frame is reloaded by a search, so the field being
        typed in is never replaced. The controller also announces the result count and keeps the form in sync with the URL. #}
-    <div data-controller="dossier-filters" data-action="turbo:frame-load->dossier-filters#announce">
+    <div data-controller="document-filters" data-action="turbo:frame-load->document-filters#announce">
         {% if not folderEmpty %}
             {{ include('client/_document_filters.html.twig') }}
         {% endif %}

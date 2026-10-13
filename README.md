@@ -156,7 +156,7 @@ Chaque changement passe par une méthode de `Document` (`startAnalysis`, `comple
 | `periode` | Mois `AAAA-MM` ou année `AAAA` : garde les pièces dont la période **chevauche** celle-ci (un relevé trimestriel apparaît pour chacun de ses mois) ; une pièce sans période n'apparaît jamais |
 | `page` | Numéro de page ; au-delà de la dernière, la dernière page est affichée |
 
-Tout est dans l'URL (partageable, bouton Précédent du navigateur). Une valeur invalide est ignorée comme si elle n'avait pas été envoyée : jamais d'erreur 500 ni de filtre fantôme (`App\Dossier\DocumentFilters`). Le formulaire ne recharge que la zone de résultats (Turbo Frame, l'URL avance) et la recherche part après 300 ms de pause ; sans JavaScript, le bouton « Rechercher » recharge la page. Le nombre de résultats est annoncé dans la zone `aria-live` unique de la page (`#live-status`), plutôt que par une seconde zone qui serait recréée à chaque rechargement.
+Tout est dans l'URL (partageable, bouton Précédent du navigateur). Une valeur invalide est ignorée comme si elle n'avait pas été envoyée : jamais d'erreur 500 ni de filtre fantôme (`App\DocumentList\DocumentFilters`). Le formulaire ne recharge que la zone de résultats (Turbo Frame, l'URL avance) et la recherche part après 300 ms de pause ; sans JavaScript, le bouton « Rechercher » recharge la page. Le nombre de résultats est annoncé dans la zone `aria-live` unique de la page (`#live-status`), plutôt que par une seconde zone qui serait recréée à chaque rechargement.
 
 **Temps réel.** Une pièce reçue n'est insérée en direct que sur la première page sans filtre (seule la liste de cette page porte l'identifiant `dashboard-documents`). Une ligne mise à jour en direct reste affichée même si son nouveau statut ne correspond plus au filtre actif, jusqu'au prochain chargement ; les compteurs par statut ne sont, eux, recalculés qu'au chargement des résultats.
 
@@ -349,7 +349,7 @@ src/
 ├── Entity/  Enum/  Exception/  Repository/                                       modèle et persistance
 ├── Security/  Twig/  DataFixtures/
 ├── Realtime/    nommage des topics Mercure et rendu des mises à jour en direct
-├── Dossier/     métier de « Mon dossier » : filtres de recherche, pagination, libellés de période
+├── DocumentList/ métier de « Mon dossier » : filtres de recherche, pagination, libellés de période
 ├── Doctrine/    extensions DQL (fonction `UNACCENT`)
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
