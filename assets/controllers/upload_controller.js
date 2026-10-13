@@ -322,7 +322,7 @@ export default class extends Controller {
         row.querySelectorAll('[data-badge]').forEach((badge) => badge.classList.toggle('hidden', badge.dataset.badge !== state));
 
         const reason = row.querySelector('[data-reason]');
-        const reasonText = { invalid: `Refusé : ${message}`, refused: `Refusée : ${message}`, interrupted: message }[state] ?? '';
+        const reasonText = { invalid: `Refusée : ${message}`, refused: `Refusée : ${message}`, interrupted: message }[state] ?? '';
         reason.textContent = reasonText;
         reason.classList.toggle('hidden', '' === reasonText);
         reason.classList.toggle('text-warning-800', 'interrupted' === state);
