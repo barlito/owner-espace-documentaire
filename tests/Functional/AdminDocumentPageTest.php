@@ -32,7 +32,7 @@ final class AdminDocumentPageTest extends WebTestCase
         $this->admin = $this->createAdmin();
     }
 
-    public function testTheAdminPageShowsTheClientTheStatusAndTheTechnicalReason(): void
+    public function testTheAdminPageShowsTheClientTheStatusAndTheFailureCause(): void
     {
         $document = $this->failedDocument($this->paul, 'Relevé.pdf', FailureReason::UnsupportedFormat);
         $this->browser->loginUser($this->admin);
@@ -46,7 +46,7 @@ final class AdminDocumentPageTest extends WebTestCase
         $status = $crawler->filter('#admin-document-status-' . $document->getId());
         $this->assertStringContainsString('Échec de l\'analyse', $status->text());
         $this->assertStringContainsString('Le contenu de ce fichier ne peut pas être analysé automatiquement', $status->text());
-        $this->assertStringContainsString('unsupported_format', $status->text());
+        $this->assertStringNotContainsString('unsupported_format', $status->text(), 'No raw code in the interface.');
         $this->assertSame('document-' . $document->getId(), $crawler->filter('#live-status')->attr('data-live-scope'));
         $this->assertSame('/admin', $crawler->selectLink('Retour à la supervision')->attr('href'));
     }
@@ -69,14 +69,15 @@ final class AdminDocumentPageTest extends WebTestCase
         $this->assertSame('Sophie Laurent', $latest->filter('[data-triggered-by]')->text());
         $this->assertStringContainsString('provider-ref-2', $latest->text());
         $this->assertStringContainsString('Échouée', $latest->text());
-        $this->assertStringContainsString('unreadable_file', $latest->text());
+        $this->assertStringContainsString('Le fichier est illisible', $latest->text());
+        $this->assertStringNotContainsString('unreadable_file', $latest->text(), 'No raw code in the interface.');
         $this->assertStringContainsString('Durée', $latest->text());
         $first = $attempts->eq(1);
         $this->assertSame('Dépôt', $first->filter('[data-triggered-by]')->text());
-        $this->assertStringContainsString('interrupted', $first->text());
+        $this->assertStringContainsString('Le traitement a été interrompu avant la fin', $first->text());
     }
 
-    public function testTheAdminTimelineNamesTheAdministratorAndTheTechnicalCause(): void
+    public function testTheAdminTimelineNamesTheAdministratorAndTheFailureCause(): void
     {
         $document = $this->failedDocument($this->paul, 'Relevé.pdf', FailureReason::Interrupted);
         $document->retryAnalysis($this->admin);
@@ -89,7 +90,7 @@ final class AdminDocumentPageTest extends WebTestCase
         $this->assertCount(4, $entries);
         $this->assertStringContainsString('Pièce reçue Déposée par Paul Martin', $entries[0]);
         $this->assertStringContainsString('Analyse démarrée Tentative n° 1', $entries[1]);
-        $this->assertStringContainsString('Échec de l\'analyse Le traitement a été interrompu avant la fin (interrupted) · Tentative n° 1', $entries[2]);
+        $this->assertStringContainsString('Échec de l\'analyse Le traitement a été interrompu avant la fin · Tentative n° 1', $entries[2]);
         $this->assertStringContainsString('Analyse relancée par Sophie Laurent (tentative n° 2)', $entries[3]);
     }
 

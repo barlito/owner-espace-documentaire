@@ -37,7 +37,7 @@ final class AdminTimelinePresenterTest extends TestCase
             [
                 ['Pièce reçue', 'Déposée par Paul Martin'],
                 ['Analyse démarrée', 'Tentative n° 1'],
-                ['Échec de l\'analyse', 'Le fichier est illisible (unreadable_file) · Tentative n° 1'],
+                ['Échec de l\'analyse', 'Le fichier est illisible · Tentative n° 1'],
                 ['Analyse relancée par Sophie Laurent (tentative n° 2)', null],
                 ['Analyse démarrée', 'Tentative n° 2'],
                 ['Analyse terminée', 'Tentative n° 2'],

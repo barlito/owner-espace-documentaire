@@ -23,7 +23,7 @@
                         <div><dt class="text-gray-500">Terminée</dt><dd>{{ attempt.finishedAt ? attempt.finishedAt|date('d/m/Y H:i:s') : '—' }}</dd></div>
                         <div class="min-w-0"><dt class="text-gray-500">Référence fournisseur</dt><dd class="font-mono text-xs break-all">{{ attempt.providerReference|default('—') }}</dd></div>
                         {% if attempt.failureReason %}
-                            <div class="sm:col-span-2"><dt class="text-gray-500">Raison technique</dt><dd>{{ attempt.failureReason.label }} <code class="text-xs text-gray-500">{{ attempt.failureReason.value }}</code></dd></div>
+                            <div class="sm:col-span-2"><dt class="text-gray-500">Cause de l'échec</dt><dd>{{ attempt.failureReason.label }}</dd></div>
                         {% endif %}
                     </dl>
                 </li>

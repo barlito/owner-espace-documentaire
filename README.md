@@ -98,7 +98,7 @@ Après `make install`, avec les comptes ci-dessus (mot de passe `demo1234`). Pou
 - **La nature est facultative au dépôt**, la période ne se saisit pas : l'analyse (simulée) les complète. Ce que le client a choisi prime sur ce que l'analyse détecte. Une pièce « Autre » ne reçoit une période que si son nom contient une date : une période absente vaut mieux qu'une période inventée.
 - **Formats retenus** : PDF, JPEG, PNG, HEIC (photos de téléphone), Word et Excel ; 20 Mo par fichier, 20 fichiers par envoi. Le type est détecté côté serveur, à partir du contenu.
 - **L'analyse démarre automatiquement** après le dépôt ; elle est simulée mais suit le fonctionnement d'un vrai fournisseur asynchrone (soumission, référence, interrogation du résultat).
-- **Le client voit qui a relancé son analyse** (« Analyse relancée par Sophie Laurent (équipe OWNER) »), comme le demande le cahier des charges pour l'auteur d'une intervention, mais jamais la raison technique ni les codes, réservés à l'administrateur.
+- **Le client voit qui a relancé son analyse** (« Analyse relancée par Sophie Laurent (équipe OWNER) »), comme le demande le cahier des charges pour l'auteur d'une intervention, mais jamais la cause précise de l'échec (« fichier illisible », « format non analysable »…), réservée à l'administrateur ; aucun des deux espaces n'affiche de code technique.
 - Les comptes de démonstration sont préparés (pas d'inscription ni de mot de passe oublié, conformément au sujet).
 
 ### Choix de conception
@@ -424,7 +424,7 @@ Un clic ou dix produisent donc une tentative et un message. La base garde le der
 
 ### Historique : ce que voit l'administrateur, ce que voit le client
 
-Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par Sophie Laurent (équipe OWNER) » : l'auteur de l'intervention est nommé, mais les causes sont en langage courant, jamais de code ni de numéro de tentative technique), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », raison technique `unreadable_file`, n° de tentative). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
+Les événements ne stockent que des codes. `ClientTimelinePresenter` les traduit pour le client (« Analyse relancée par Sophie Laurent (équipe OWNER) » : l'auteur de l'intervention est nommé, mais les causes sont en langage courant, jamais de code ni de numéro de tentative technique), `AdminTimelinePresenter` pour l'équipe (« Analyse relancée par Sophie Laurent (tentative n° 2) », cause précise « Le fichier est illisible », n° de tentative ; le code `unreadable_file` reste en base, jamais à l'écran). Les deux produisent les mêmes `TimelineEntry` et partagent le même partiel Twig.
 
 ### Temps réel côté admin
 

@@ -66,7 +66,7 @@ final class PublishDocumentUpdateHandlerTest extends AnalysisTestCase
         $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-timeline-%s">', $id), $data);
         $this->assertStringContainsString(\sprintf('<turbo-stream action="replace" target="admin-document-actions-%s">', $id), $data);
         $this->assertStringContainsString(\sprintf('src="/admin/pieces/%s/actions"', $id), $data, 'The retry button is fetched by the viewer: it needs their CSRF token.');
-        $this->assertStringContainsString('unreadable_file', $data);
+        $this->assertStringContainsString('Le fichier est illisible', $data);
         $this->assertStringNotContainsString('csrf', strtolower($data));
         // Failed: the list is not reordered under the cursor, the administrator is told instead.
         $this->assertStringContainsString('<turbo-stream action="update" target="admin-todo-notice">', $data);
