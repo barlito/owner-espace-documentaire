@@ -27,12 +27,24 @@ docker compose exec php composer install
 docker compose exec php bin/console tailwind:build
 docker compose exec php bin/console doctrine:database:create --if-not-exists
 docker compose exec php bin/console doctrine:migrations:migrate -n
-docker compose exec php bin/console doctrine:fixtures:load -n
+docker compose exec php bin/console doctrine:fixtures:load -n --purge-with-truncate --group=demo
 ```
 
-### Comptes de démonstration
+### Données de démonstration
 
-Chargés par `make install` (ou `make fixtures`, qui vide la base avant de les recréer). Mot de passe commun : `demo1234`.
+`make install` (ou `make fixtures`) charge un jeu de démonstration, après avoir **vidé la base et le stockage des documents** (seul le disque `documents.storage` est purgé, via Flysystem) :
+
+- les trois comptes ci-dessous ;
+- environ 14 mois d'historique pour les deux clients : ~60 documents pour la Boulangerie Martin, ~36 pour la Micro-crèche, avec de vrais fichiers stockés (PDF générés, quelques images) ;
+- tous les statuts : analysés pour la plupart, quelques documents en attente ou en cours d'analyse (déposés dans l'heure), des échecs de causes variées, et des documents relancés par l'administratrice (échec puis succès à la tentative n° 2, ou relance encore en attente).
+
+`make fixtures.volume` charge en plus un jeu de **test de charge** : 40 clients de 3 à 100 documents et un très gros client de 3 000 documents, soit environ 5 200 documents au total (une dizaine de secondes). Ces 40 comptes partagent le mot de passe `demo1234`.
+
+Les jeux sont déterministes (graine fixe) : seules les dates sont relatives au jour du chargement.
+
+#### Comptes
+
+Mot de passe commun : `demo1234`.
 
 | Rôle | Adresse e-mail | Accès |
 | --- | --- | --- |
@@ -57,7 +69,8 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | `make watch` | Recompile le CSS (Tailwind) à chaque modification |
 | `make console c="…"` | Lance une commande Symfony |
 | `make db.reset` | Supprime et recrée la base |
-| `make fixtures` | Recharge les comptes de démonstration (vide la base) |
+| `make fixtures` | Recharge le jeu de démonstration (vide la base et le stockage des documents) |
+| `make fixtures.volume` | Recharge la démonstration et ajoute ~5 000 documents pour tester la charge |
 
 ## Stack technique
 
@@ -71,6 +84,7 @@ Le port peut être changé avec `HTTP_PORT=8080 make up`. Si votre UID/GID n'est
 | Front | **AssetMapper + Stimulus + Turbo** | Imposés par le sujet (Turbo, Stimulus) ; AssetMapper est le défaut de Symfony et évite toute chaîne Node. C'est aussi la stack du site d'OWNER. |
 | CSS | **Tailwind CSS v4** (`symfonycasts/tailwind-bundle`) | Binaire autonome, sans Node. Les tokens de la DA sont déclarés dans `@theme` et la palette par défaut est désactivée : seules les couleurs OWNER existent. |
 | Composants | **Twig Components** + **UX Icons** (Lucide) | Briques partagées par les deux espaces (`Button`, `Badge`, `Alert`, `Card`, `EmptyState`). Icônes en SVG inline, versionnées dans `assets/icons/`, sans appel externe. |
+| Horloge | **`symfony/clock`** | Les entités lisent l'heure via `now()` : identique en production, mais les fixtures (et les tests) peuvent figer ou avancer l'horloge pour produire un historique daté de façon cohérente, sans setter ni réflexion. |
 | Stockage | **Flysystem** (`league/flysystem-bundle`) | Les fichiers passent par une abstraction : disque local aujourd'hui (`var/storage/documents`, hors de `public/`), adaptateur mémoire en test, un bucket S3 demain sans toucher au code métier. |
 | Qualité | **PHPStan** (niveau 8) + **PHP-CS-Fixer** | Analyse statique et style homogène, vérifiés en CI (GitHub Actions) sur chaque PR. |
 

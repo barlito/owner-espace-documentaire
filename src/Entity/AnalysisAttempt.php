@@ -12,6 +12,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+use function Symfony\Component\Clock\now;
+
 /**
  * One analysis run of a document. A retry creates a new attempt and never rewrites a previous one.
  *
@@ -70,7 +72,7 @@ class AnalysisAttempt
         $this->document = $document;
         $this->number = $number;
         $this->triggeredBy = $triggeredBy;
-        $this->requestedAt = new \DateTimeImmutable();
+        $this->requestedAt = now();
     }
 
     /**
@@ -80,7 +82,7 @@ class AnalysisAttempt
     {
         $this->assertStatus(AttemptStatus::Pending);
         $this->status = AttemptStatus::Running;
-        $this->startedAt = new \DateTimeImmutable();
+        $this->startedAt = now();
     }
 
     /**
@@ -93,7 +95,7 @@ class AnalysisAttempt
         $this->assertStatus(AttemptStatus::Running);
         $this->status = AttemptStatus::Succeeded;
         $this->result = $result;
-        $this->finishedAt = new \DateTimeImmutable();
+        $this->finishedAt = now();
     }
 
     /**
@@ -104,7 +106,7 @@ class AnalysisAttempt
         $this->assertStatus(AttemptStatus::Running);
         $this->status = AttemptStatus::Failed;
         $this->failureReason = $reason;
-        $this->finishedAt = new \DateTimeImmutable();
+        $this->finishedAt = now();
     }
 
     public function getId(): Uuid

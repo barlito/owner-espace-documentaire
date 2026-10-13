@@ -3,12 +3,12 @@
 DC   = docker compose
 EXEC = $(DC) exec -T php
 
-.PHONY: help install up down build sh logs composer console db.migrate db.reset fixtures assets watch test lint fix phpstan cs cs.fix
+.PHONY: help install up down build sh logs composer console db.migrate db.reset fixtures fixtures.volume assets watch test lint fix phpstan cs cs.fix
 
 help: ## List available commands
 	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-install: build up ## Full install (build, start, dependencies, assets, database, demo accounts)
+install: build up ## Full install (build, start, dependencies, assets, database, demo dataset)
 	$(EXEC) composer install --no-interaction
 	$(MAKE) assets
 	$(MAKE) db.migrate
@@ -43,8 +43,11 @@ db.reset: ## Drop and recreate the database
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists
 	$(MAKE) db.migrate
 
-fixtures: ## Load the demo accounts (purges the database first)
-	$(EXEC) bin/console doctrine:fixtures:load --no-interaction
+fixtures: ## Load the demo dataset (purges the database and the stored files first)
+	$(EXEC) bin/console doctrine:fixtures:load --no-interaction --purge-with-truncate --group=demo
+
+fixtures.volume: ## Load the demo dataset plus about 5,000 documents for load testing (purges first)
+	$(EXEC) bin/console doctrine:fixtures:load --no-interaction --no-debug --purge-with-truncate --group=demo --group=volume
 
 assets: ## Build the CSS (Tailwind)
 	$(EXEC) bin/console tailwind:build

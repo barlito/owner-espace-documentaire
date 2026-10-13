@@ -17,6 +17,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+use function Symfony\Component\Clock\now;
+
 /**
  * File submitted by a client: one accepted file = one document.
  *
@@ -126,7 +128,7 @@ class Document
         $this->type = $type;
         $this->periodStart = $periodStart;
         $this->periodEnd = $periodEnd;
-        $this->uploadedAt = new \DateTimeImmutable();
+        $this->uploadedAt = now();
         $this->attempts = new ArrayCollection();
         $this->events = new ArrayCollection();
 
