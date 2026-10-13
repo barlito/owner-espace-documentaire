@@ -64,6 +64,15 @@ final class UploadPolicy
     }
 
     /**
+     * Whether the file name announces the format detected in its content (case-insensitive), so that a download
+     * never carries a misleading extension (a PDF named .html, an image named .exe).
+     */
+    public function extensionMatches(string $mimeType, string $extension): bool
+    {
+        return \in_array(strtolower($extension), $this->formatOf($mimeType)['extensions'] ?? [], true);
+    }
+
+    /**
      * Value of the "accept" attribute of the file input (a hint for the file picker, never a guarantee).
      */
     public function acceptAttribute(): string
@@ -74,6 +83,13 @@ final class UploadPolicy
     public function unsupportedFormatMessage(): string
     {
         return \sprintf('Ce format n\'est pas accepté. Formats acceptés : %s.', implode(', ', $this->formatLabels()));
+    }
+
+    public function extensionMismatchMessage(string $mimeType): string
+    {
+        $format = $this->formatOf($mimeType) ?? throw new \LogicException(\sprintf('"%s" is not an accepted MIME type.', $mimeType));
+
+        return \sprintf('Le nom de ce fichier ne correspond pas à son contenu (%s). Renommez-le avec l\'extension .%s, puis déposez-le à nouveau.', $format['label'], $format['extensions'][0]);
     }
 
     public function tooLargeMessage(): string
@@ -89,5 +105,19 @@ final class UploadPolicy
     public function interruptedMessage(): string
     {
         return 'L\'envoi de ce fichier a été interrompu, réessayez.';
+    }
+
+    /**
+     * @return array{label: string, mimeTypes: list<string>, extensions: list<string>}|null
+     */
+    private function formatOf(string $mimeType): ?array
+    {
+        foreach (self::FORMATS as $format) {
+            if (\in_array($mimeType, $format['mimeTypes'], true)) {
+                return $format;
+            }
+        }
+
+        return null;
     }
 }

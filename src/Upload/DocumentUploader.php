@@ -109,6 +109,9 @@ final readonly class DocumentUploader
         if (!$this->policy->isAcceptedMimeType($mimeType)) {
             throw new UploadRejected($this->policy->unsupportedFormatMessage());
         }
+        if (!$this->policy->extensionMatches($mimeType, $file->getClientOriginalExtension())) {
+            throw new UploadRejected($this->policy->extensionMismatchMessage($mimeType));
+        }
 
         return $mimeType;
     }
