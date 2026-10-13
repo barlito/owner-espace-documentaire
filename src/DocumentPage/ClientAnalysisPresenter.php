@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DocumentPage;
 
+use App\Dossier\PeriodLabel;
 use App\Entity\Document;
 use App\Enum\DocumentStatus;
 use App\Enum\DocumentType;
@@ -15,7 +16,6 @@ use App\Enum\FailureReason;
 final readonly class ClientAnalysisPresenter
 {
     public function __construct(
-        private PeriodFormatter $periodFormatter = new PeriodFormatter(),
         private ClientFailureWording $failureWording = new ClientFailureWording(),
     ) {
     }
@@ -62,7 +62,7 @@ final readonly class ClientAnalysisPresenter
             summary: \is_string($result['summary'] ?? null) ? $result['summary'] : null,
             fields: $fields,
             detectedType: $detectedType,
-            period: $this->periodFormatter->format($document->getPeriodStart(), $document->getPeriodEnd()),
+            period: null === $document->getPeriodStart() || null === $document->getPeriodEnd() ? null : PeriodLabel::range($document->getPeriodStart(), $document->getPeriodEnd()),
         );
     }
 }

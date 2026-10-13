@@ -55,7 +55,7 @@ final class UploadTest extends WebTestCase
         $this->assertSame('Bilan 2024.pdf', $payload['name']);
         $this->assertSame('En attente d\'analyse', $payload['status_label']);
         $this->assertNotEmpty($payload['id']);
-        $this->assertSame('/espace', $payload['url']);
+        $this->assertSame('/espace/pieces/' . $payload['id'], $payload['url']);
 
         $this->browser->request('GET', '/espace');
         $this->assertSelectorTextContains('main', 'Mes pièces');

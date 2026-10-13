@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\DocumentPage;
 
 use App\Entity\Document;
-use Twig\Attribute\AsTwigFilter;
 use Twig\Attribute\AsTwigFunction;
 
 /**
@@ -17,7 +16,6 @@ final readonly class DocumentPageExtension
     public function __construct(
         private ClientTimelinePresenter $timeline,
         private ClientAnalysisPresenter $analysis,
-        private PeriodFormatter $periodFormatter,
     ) {
     }
 
@@ -40,11 +38,5 @@ final readonly class DocumentPageExtension
     public function fileKind(Document $document): FileKind
     {
         return FileKind::fromMimeType($document->getMimeType());
-    }
-
-    #[AsTwigFilter('period')]
-    public function period(?\DateTimeImmutable $start, ?\DateTimeImmutable $end): ?string
-    {
-        return $this->periodFormatter->format($start, $end);
     }
 }

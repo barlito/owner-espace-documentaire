@@ -16,7 +16,7 @@
             </div>
             <div>
                 <dt class="text-gray-500">Période</dt>
-                <dd class="mt-0.5 font-medium text-navy-500">{{ document.periodStart|period(document.periodEnd)|default('Non déterminée') }}</dd>
+                <dd class="mt-0.5 font-medium text-navy-500">{{ period_label(document.periodStart, document.periodEnd)|default('Non déterminée') }}</dd>
             </div>
         </dl>
 
