@@ -69,4 +69,23 @@ enum DocumentType: string
             self::Other => DocumentFamily::Other,
         };
     }
+
+    /**
+     * Every nature, grouped by family in the order of the families (for selects with option groups).
+     *
+     * @return list<array{family: DocumentFamily, types: list<DocumentType>}>
+     */
+    public static function groupedByFamily(): array
+    {
+        return array_map(
+            static fn (DocumentFamily $family): array => [
+                'family' => $family,
+                'types' => array_values(array_filter(
+                    self::cases(),
+                    static fn (self $type): bool => $type->family() === $family,
+                )),
+            ],
+            DocumentFamily::cases(),
+        );
+    }
 }

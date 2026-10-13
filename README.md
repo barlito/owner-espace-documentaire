@@ -144,6 +144,24 @@ Chaque changement passe par une méthode de `Document` (`startAnalysis`, `comple
 - **Interface** : un envoi = une requête par fichier (progression par fichier, un refus n'empêche pas les autres), deux envois en parallèle. Sans JavaScript, le formulaire reste fonctionnel (`files[]` en une seule requête, `post_max_size = 100M`), et chaque fichier est traité indépendamment.
 - Les limites PHP sont dans `.docker/php/app.ini` (`upload_max_filesize = 20M`, `post_max_size = 100M`, `max_file_uploads = 20`).
 
+## Mon dossier
+
+`/espace` liste **toutes** les pièces du client connecté (25 par page, les plus récentes d'abord), avec recherche et filtres. Le client vient toujours de la session, jamais de la requête.
+
+| Paramètre | Rôle |
+| --- | --- |
+| `q` | Nom du fichier, insensible à la casse et aux accents (`releve` trouve `Relevé`) ; `%` et `_` sont cherchés littéralement |
+| `statut` | `pending`, `processing`, `analyzed` ou `failed` |
+| `nature` | Une valeur de `DocumentType`, ou `aucune` (pièces non catégorisées) |
+| `periode` | Mois `AAAA-MM` ou année `AAAA` : garde les pièces dont la période **chevauche** celle-ci (un relevé trimestriel apparaît pour chacun de ses mois) ; une pièce sans période n'apparaît jamais |
+| `page` | Numéro de page ; au-delà de la dernière, la dernière page est affichée |
+
+Tout est dans l'URL (partageable, bouton Précédent du navigateur). Une valeur invalide est ignorée comme si elle n'avait pas été envoyée : jamais d'erreur 500 ni de filtre fantôme (`App\DocumentList\DocumentFilters`). Le formulaire ne recharge que la zone de résultats (Turbo Frame, l'URL avance) et la recherche part après 300 ms de pause ; sans JavaScript, le bouton « Rechercher » recharge la page. Le nombre de résultats est annoncé dans la zone `aria-live` unique de la page (`#live-status`), plutôt que par une seconde zone qui serait recréée à chaque rechargement.
+
+**Temps réel.** Une pièce reçue n'est insérée en direct que sur la première page sans filtre (seule la liste de cette page porte l'identifiant `dashboard-documents`). Une ligne mise à jour en direct reste affichée même si son nouveau statut ne correspond plus au filtre actif, jusqu'au prochain chargement ; les compteurs par statut ne sont, eux, recalculés qu'au chargement des résultats.
+
+**Volume** (`make fixtures.volume`, client de 3 000 pièces, PostgreSQL 18 après `ANALYZE`) : liste et comptage prennent chacun de 0,1 à 3 ms, sans filtre, avec recherche, avec statut, avec période, en page 1 comme en page 100. Aucun index n'a été ajouté : un index `(client_id, period_start)` ne se justifie pas à cette échelle. Ce qui passe à l'échelle : le filtrage par client s'appuie sur les index existants (`client_id, uploaded_at`), la liste ne charge aucune association, le comptage est une requête agrégée. Prochaines étapes si un client dépassait quelques dizaines de milliers de pièces : pagination par curseur (`uploaded_at, id`) à la place de `OFFSET`, et index trigramme (`pg_trgm`) sur le nom de fichier normalisé (la recherche parcourt aujourd'hui toutes les pièces du client).
+
 ## Analyse simulée
 
 Chaque document déposé reçoit une analyse **simulée** (aucun vrai traitement), exécutée en asynchrone par un worker (`make up` le démarre ; `make worker.logs` pour le suivre).
@@ -331,6 +349,8 @@ src/
 ├── Entity/  Enum/  Exception/  Repository/                                       modèle et persistance
 ├── Security/  Twig/  DataFixtures/
 ├── Realtime/    nommage des topics Mercure et rendu des mises à jour en direct
+├── DocumentList/ métier de « Mon dossier » : filtres de recherche, pagination, libellés de période
+├── Doctrine/    extensions DQL (fonction `UNACCENT`)
 ├── Upload/      métier du dépôt : politique, détection du format, enregistrement
 └── Analysis/    métier de l'analyse : mise en file, résultat, réglages de la réconciliation
     ├── Provider/     le contrat d'un fournisseur d'analyse : objets échangés, interface dans Provider/Interface/

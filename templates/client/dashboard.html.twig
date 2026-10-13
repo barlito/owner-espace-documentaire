@@ -11,30 +11,17 @@
         <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
     </div>
 
-    {# Live updates: the stream targets are #dashboard-empty, #dashboard-documents and each row's id.
-       The card only shows once it holds a row, so the first document received live appears without a reload. #}
-    {% if documents is empty %}
-        <div id="dashboard-empty">
-            <twig:Card>
-                <twig:EmptyState
-                    icon="lucide:folder-open"
-                    title="Votre dossier est encore vide"
-                    description="Déposez vos documents comptables, juridiques et sociaux : vous suivrez ici leur réception puis leur analyse."
-                >
-                    <twig:Button href="{{ path('client_upload') }}" icon="lucide:upload">Déposer des pièces</twig:Button>
-                </twig:EmptyState>
-            </twig:Card>
-        </div>
-    {% endif %}
+    {# The form and the results are siblings: only the results frame is reloaded by a search, so the field being
+       typed in is never replaced. The controller also announces the result count and keeps the form in sync with the URL. #}
+    <div data-controller="document-filters" data-action="turbo:frame-load->document-filters#announce">
+        {% if not folderEmpty %}
+            {{ include('client/_document_filters.html.twig') }}
+        {% endif %}
 
-    <twig:Card :padded="false" class="hidden has-[li]:block">
-        <h2 class="border-b border-gray-50 px-5 py-4 text-lg sm:px-6">Dernières pièces reçues</h2>
-        <ul id="dashboard-documents" class="divide-y divide-gray-50">
-            {% for document in documents %}
-                {{ include('client/_document_row.html.twig') }}
-            {% endfor %}
-        </ul>
-    </twig:Card>
+        <turbo-frame id="documents-results" data-turbo-action="advance">
+            {{ include('client/_documents_results.html.twig') }}
+        </turbo-frame>
+    </div>
 
     {{ include('realtime/_client_stream.html.twig') }}
 {% endblock %}

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Enum\DocumentFamily;
 use App\Enum\DocumentType;
 use App\Upload\DocumentUploader;
 use App\Upload\UploadPolicy;
@@ -38,7 +37,7 @@ final class ClientUploadController extends AbstractController
     {
         return $this->render('client/upload.html.twig', [
             'policy' => $this->policy,
-            'typeGroups' => $this->typeGroups(),
+            'typeGroups' => DocumentType::groupedByFamily(),
         ]);
     }
 
@@ -164,24 +163,5 @@ final class ClientUploadController extends AbstractController
         if (!$this->isCsrfTokenValid(self::CSRF_TOKEN_ID, $request->request->getString('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
-    }
-
-    /**
-     * Document types grouped by family, in declaration order, for <optgroup> rendering.
-     *
-     * @return list<array{family: DocumentFamily, types: list<DocumentType>}>
-     */
-    private function typeGroups(): array
-    {
-        return array_map(
-            static fn (DocumentFamily $family): array => [
-                'family' => $family,
-                'types' => array_values(array_filter(
-                    DocumentType::cases(),
-                    static fn (DocumentType $type): bool => $type->family() === $family,
-                )),
-            ],
-            DocumentFamily::cases(),
-        );
     }
 }
