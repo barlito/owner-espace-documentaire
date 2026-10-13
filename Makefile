@@ -3,15 +3,16 @@
 DC   = docker compose
 EXEC = $(DC) exec -T php
 
-.PHONY: help install up down build sh logs composer console db.migrate db.reset assets watch test lint fix phpstan cs cs.fix
+.PHONY: help install up down build sh logs composer console db.migrate db.reset fixtures assets watch test lint fix phpstan cs cs.fix
 
 help: ## List available commands
 	@grep -E '^[a-zA-Z_.-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-install: build up ## Full install (build, start, dependencies, assets, database)
+install: build up ## Full install (build, start, dependencies, assets, database, demo accounts)
 	$(EXEC) composer install --no-interaction
 	$(MAKE) assets
 	$(MAKE) db.migrate
+	$(MAKE) fixtures
 
 build: ## Build the PHP image
 	$(DC) build
@@ -41,6 +42,9 @@ db.migrate: ## Create the database if needed and run migrations
 db.reset: ## Drop and recreate the database
 	$(EXEC) bin/console doctrine:database:drop --force --if-exists
 	$(MAKE) db.migrate
+
+fixtures: ## Load the demo accounts (purges the database first)
+	$(EXEC) bin/console doctrine:fixtures:load --no-interaction
 
 assets: ## Build the CSS (Tailwind)
 	$(EXEC) bin/console tailwind:build

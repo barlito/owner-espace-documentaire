@@ -1,0 +1,19 @@
+{% if is_granted('IS_AUTHENTICATED_FULLY') %}
+    <div class="flex items-center gap-3">
+        <div class="text-right leading-tight">
+            <span class="sr-only sm:hidden">Connecté en tant que {{ app.user.fullName }}</span>
+            <p class="hidden text-sm font-semibold text-navy-500 sm:block">{{ app.user.fullName }}</p>
+            {% if app.user.isAdmin %}
+                <twig:Badge variant="info" icon="lucide:shield-check" class="sm:mt-0.5">Équipe OWNER</twig:Badge>
+            {% elseif app.user.client %}
+                <p class="hidden text-xs text-gray-500 sm:block">{{ app.user.client.name }}</p>
+            {% endif %}
+        </div>
+        <form method="post" action="{{ path('app_logout') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+            <twig:Button type="submit" variant="ghost" size="sm" icon="lucide:log-out">
+                <span class="sr-only sm:not-sr-only">Déconnexion</span>
+            </twig:Button>
+        </form>
+    </div>
+{% endif %}

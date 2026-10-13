@@ -11,5 +11,8 @@ framework:
 when@test:
     framework:
         test: true
+        # In-memory cache so login throttling counters never leak between test runs.
+        cache:
+            app: cache.adapter.array
         session:
             storage_factory_id: session.storage.factory.mock_file

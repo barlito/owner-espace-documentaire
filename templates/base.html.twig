@@ -15,24 +15,29 @@
             Aller au contenu
         </a>
 
-        <header class="border-b border-gray-50 bg-white">
-            <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-                <a href="/" class="flex items-center gap-3">
-                    <img src="{{ asset('images/owner-logo.png') }}" alt="OWNER" width="120" height="18" class="h-[18px] w-auto">
-                    <span class="hidden border-l border-gray-100 pl-3 text-sm font-medium text-gray-500 sm:inline">Espace documentaire</span>
-                </a>
-                {% block header_actions %}{% endblock %}
-            </div>
-        </header>
+        {% block page %}
+            <header class="border-b border-gray-50 bg-white">
+                <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+                    <a href="/" class="flex items-center gap-3">
+                        <img src="{{ asset('images/owner-logo.png') }}" alt="OWNER" width="120" height="18" class="h-[18px] w-auto">
+                        <span class="hidden border-l border-gray-100 pl-3 text-sm font-medium text-gray-500 sm:inline">Espace documentaire</span>
+                    </a>
+                    <div class="flex items-center gap-3">
+                        {% block header_actions %}{% endblock %}
+                        {% include 'security/_account_menu.html.twig' %}
+                    </div>
+                </div>
+            </header>
 
-        <main id="contenu" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-            {% for type, messages in app.flashes %}
-                {% for message in messages %}
-                    <twig:Alert variant="{{ type }}" class="mb-6">{{ message }}</twig:Alert>
+            <main id="contenu" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+                {% for type, messages in app.flashes %}
+                    {% for message in messages %}
+                        <twig:Alert variant="{{ type }}" class="mb-6">{{ message }}</twig:Alert>
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
 
-            {% block body %}{% endblock %}
-        </main>
+                {% block body %}{% endblock %}
+            </main>
+        {% endblock %}
     </body>
 </html>
